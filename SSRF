@@ -1,0 +1,34 @@
+Task 1:
+///Lab: Basic SSRF against the local server///
+
+Visit the site in burpsuite's browser and check one of the products stock. Then visit http history. You will see a POST /product/stock request. Send it to repeater.
+At the end of the request there is a line: 
+stockApi=http%3A%2F%2Fstock.weliketoshop.net%3A8080%2Fproduct%2Fstock%2Fcheck%3FproductId%3D1%26storeId%3D1
+This is the line where the browser asks down the servers data, what if we change this? Usually behind every site there is an admin api, The lab gives us this: "http://localhost/admin"
+So copy this address into the request like: 
+stockApi=http://localhost/admin
+As you can see this opened the admins panel, where we can delete 2 users profile: wiener and carlos. For solve the lab we must delete carlos's profile...:
+in the source code the delete part is looks like this:
+                       <div>
+                            <span>carlos - </span>
+                            <a href="/admin/delete?username=carlos">Delete</a>
+                        </div>
+So all we have to do is copy this into our stockapi part like: 
+stockApi=http://localhost/admin/delete?username=carlos and send it.
+
+Task 2:
+///Lab: Basic SSRF against another back-end system///
+
+We will do the same until this part:
+stockApi=http://localhost/admin. The lab gave us a different path: 192.168.0.X with port 8080. so the url will be: http://192.168.0.1:8080/admin BUT! we dont know which ip address is the right one...so we have to
+figure out. We can do this with intruder, so send this request to intruder also.
+In the intruder add a position to the last part of the ip like this : 192.168.0.§1§:8080/admin, at the payloads pick numbers and set the attack from 1 to 255 by step 1. and start the attack.
+Visit the status code. If its 200 we found our admin panel. In my case this was 176. So i changed my stockApi to:
+stockApi=http://192.168.0.176:8080/admin >>there is the admin panel again, and from the source:
+                       <div>
+                            <span>carlos - </span>
+                            <a href="/http://192.168.0.176:8080/admin/delete?username=carlos">Delete</a>
+                        </div>
+All i have to do is copy this url into the stockApi...
+
+Task 3:
