@@ -1,0 +1,61 @@
+Task 1:
+///Lab: File path traversal, simple case///
+
+Open the site, check a product, and there is an img from the product. I opened it in a new window..URL:
+https://0a27008103d6b34d81472f5c0072004d.web-security-academy.net/image?filename=42.jpg
+
+Since its a basic lab, probably we can move from here...in the lab description there is our needed path: /etc/passwd so we can try ../../../../../../etc/passwd ---> we are moving back to / then moving to /etc/passwd
+https://0a27008103d6b34d81472f5c0072004d.web-security-academy.net/image?filename=../../../../../etc/passwd
+And that was all.
+
+Task 2:
+///Lab: File path traversal, traversal sequences blocked with absolute path bypass///
+
+Open the site in burpsuite. As i opened the site, i noticed that the site loaded all the images first...in lab description: "The application blocks traversal sequences but treats the supplied filename as being relative to a default working directory."
+So we will still type /etc/passwd, just without the ../../../ and we have to intercept the request...so turn on the intercept and refresh the page...
+Let forward the GET / request, and after that as you can see there will be a lot of GET requests, where the site loads the products pictures. Pick one, and modify the request like this:
+
+GET /image?filename=/etc/passwd HTTP/2
+
+Turn intercept off, and the lab is solved.
+
+Task 3:
+///Lab: File path traversal, traversal sequences stripped non-recursively///
+
+Do the same like in task 2. But now we will modify the request like this:
+GET /image?filename=....//....//....//etc/passwd HTTP/2
+
+Why this? Because the server is filtering out the ../ part ..so..
+....//....//....//
+..|../|/..|../|/..|../|/..|../|/etc...  after the filter:
+..     /..     /..     /..     /etc...  and this is the same like in task 1
+
+Task 4:
+///Lab: File path traversal, traversal sequences stripped with superfluous URL-decode///
+
+Do the same like is taks 2 and 3, but this time as in the lab title will will url encode our url.
+So frist i tried:
+GET /image?filename=%252e%252e%2F%252e%252e%2F%252e%252e%2F%252e%252e%2Fetc/passwd HTTP/2 >>>and it worked. 
+
+Task 5:
+///https://portswigger.net/web-security/file-path-traversal/lab-validate-start-of-path///
+
+Open the lab in burp. And this time the site giving us a different path to the images:
+GET /image?filename=/var/www/images/22.jpg HTTP/2
+
+So we can modify the request like:
+GET /image?filename=/var/www/images/../../../etc/passwd HTTP/2
+And we solved the lab.
+
+Task 6:
+///Lab: File path traversal, validation of file extension with null byte bypass///
+
+In the title: "with null byte bypass" This is a method, where we put a %00 after the last string we want to use. The %00 will comment out the rest of the line.
+So here is our normal request:
+GET /image?filename=68.jpg HTTP/2
+And modify like this:
+GET /image?filename=../../../../etc/passwd%0068.jpg HTTP/2
+And thats all, we solved the lab.
+
+
+
