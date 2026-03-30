@@ -1,0 +1,140 @@
+Task 1:
+///Lab: Unprotected admin functionality///
+
+Open the site. Most of the websites there is a robots.txt file. This file says to the search engines (like google or bing etc.), that if a search robot checks the website which part of the site is allowed to see 
+and which not. In this file we can find indicates to find login pages, administrator sites...these are usually hidden, but maybe they are in this file as disallowed.
+so lets modify our url:
+https://0ab3000e03797e958287a28c00e9002a.web-security-academy.net/robots.txt
+This file contains these lines:
+User-agent: *
+Disallow: /administrator-panel
+All we have to do is copy this into our url, and delete carlos...
+
+Task 2:
+///Lab: Unprotected admin functionality with unpredictable URL///
+
+In this lab's description says: "It's located at an unpredictable location, but the location is disclosed somewhere in the application."
+So open the page in burp, and check the source...and i've found this:
+  adminPanelTag.setAttribute('href', '/admin-1lm2v1');
+   adminPanelTag.innerText = 'Admin panel';
+
+So copy this into our url:
+https://0a9a002f044e30ee8235476c003e00f1.web-security-academy.net/admin-1lm2v1
+And delete carlos...
+
+Task 3:
+///Lab: User role controlled by request parameter///
+
+Open the site in Burp. Log in, and check the request:
+GET /my-account?id=wiener HTTP/2
+Host: 0ae4005904deb3c580355d24004c007d.web-security-academy.net
+Cookie: Admin=false; session=BB3emsK25agdCUSRVdDVWp1RGl6hkcAF
+Sec-Ch-Ua: "Chromium";v="145", "Not:A-Brand";v="99"
+...
+As you can see there is an admin cookie, send this request to repeater. Modify this parameter to true, and send it...as you can see there is az admin panel popped up. So turn in intercept, refresh the page and modify
+the admin cookie in the requests. Navigat to the admin panel, modify the request again, click on delete carlos, modify the request again, and thats all.
+
+Task 4:
+///Lab: User role can be modified in user profile///
+
+Open The site in burp. The labs description writes that "This lab has an admin panel at /admin. It's only accessible to logged-in users with a roleid of 2.", So there is an /admin panel, and we have to search
+a roleid=2 parameter somewhere. After a little search, if you change your eamail address in the response we will get this:
+{
+  "username": "wiener",
+  "email": "asd@asd.hu",
+  "apikey": "vINW9gi2XW4hZYaDyGKEfMhD7riKvcO4",
+  "roleid": 1
+}
+The request is:
+POST /my-account/change-email HTTP/2
+Host: 0a4800c1036b347280e830a700ff001c.web-security-academy.net
+Cookie: session=CzlPhZGE7DRs6VlvBGp7Fr5C5cyDTlow
+....
+Priority: u=1, i
+
+{"email":"asd@asd.hu"}
+So maybe if we add the "roleid": 2 to this request we will get admin rights...Turn intercept on, and change the email address. Modify the request like:
+
+{"email":"asd3@asd.hu",
+ "roleid": 2
+}
+And we got the rights to the admin panel...delete carlos and we r done.
+
+Task 5:
+///Lab: User ID controlled by request parameter///
+
+Open the site, log in as wiener/peter. In the URL there is "my-account?id=wiener"...change it to "my-account?id=carlos" and thats all...
+
+Task 6:
+///Lab: User ID controlled by request parameter, with unpredictable user IDs///
+
+Open the site, log in as wiener/peter. As you can see there is a random UUID in the url, which means we cant figure out, if we change it to carlos, it wont work like before.
+So i was checking everything on the site...changing email...etc. Then i found that carlos has made a blogspot, and if you click on his name, in the url the site gives us his uuid...copy out,
+go to my-account page, change the id, and thats all...
+
+Task 7:
+///Lab: User ID controlled by request parameter with data leakage in redirect///
+
+Open the site in burp. Log in as wiener/peter, change the email and check the http history.
+If you change your email, in the response there is this line:
+Location: /my-account?id=wiener
+So i send this request to repeater, and modified the request to: 
+POST /my-account?id=carlos HTTP/2
+Host: 0a57001a0344e8478025309000940055.web-security-academy.net
+....
+Referer: https://0a57001a0344e8478025309000940055.web-security-academy.net/my-account?id=wiener
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+Location: /my-account?id=carlos
+
+email=asd%40asd.hu&csrf=8cAicordQbijX8ODzp4VJKDeWPmd56eJ
+
+And thats all...in the source there was carlos's api key.
+
+Task 8:
+///Lab: User ID controlled by request parameter with password disclosure///
+
+Open the site in burp, log in. Change the my account id to administrator like: /my-account?id=administrator
+In the page's source code you will see the administrators password: 
+                           <br/>
+                            <label>Password</label>
+                            <input required type="hidden" name="csrf" value="dOjIN7WP3O7ON2UJ3XtBFMftqUPd4ufS">
+                            <input required type=password name=password value='546fh38t5p64aed54thh'/>
+                            <button class='button' type='submit'> Update password 
+Copy it out, and log out from wiener, and log in with the pw as administrator and delete carlos..
+
+Task 9:
+///Lab: Insecure direct object references///
+
+Open the site in burpsuite. Log in as wiener/peter, click on live chat, write smthing to him, and click on "view transcript". Check the http history in burp...There is a get request:
+GET /download-transcript/2.txt HTTP/2
+Host: 0a2000a30406251381127b8300d900cb.web-security-academy.net
+....etcetc.
+As you noticed its not 0 or 1...it started with 2. so Maybe there was more chat talking before which was saved. Send the request to repeater, and change the url...then log in as carlos with his password.
+
+Task 10:
+///Lab: URL-based access control can be circumvented///
+
+"X-Original-URL header." thats a huge clue..After a lot of try i did this: send the GET / request to repeater. And add a line to the end: X-Original-Url: /admin
+If you send this, the response will be the admin panel, but u cant do anything here, but you have a url to delete carlos which is: /admin/delete?username=carlos
+So my first try was copy this instead of the /admin...and i got a bad request missing parameter 'username'. This means the back-end server cant see my username parameter...so the solution is we are going to 
+separate our url to two parts...Because the back-end is searching my parameters at the / route. so we will give him here. So the front-end will think that we ask the front page with some parameter, while the backend 
+call the X-Original-Url funcion which is deleting...
+So our request will look like this:
+GET /?username=carlos HTTP/2
+Host: 0a8a007e0352fbe081927a3400d400cb.web-security-academy.net
+....
+....
+Referer: https://0a8a007e0352fbe081927a3400d400cb.web-security-academy.net/login
+Accept-Encoding: gzip, deflate, br
+Priority: u=0, i
+X-Original-Url: /admin/delete
+
+Task 11:
+///Lab: Method-based access control can be circumvented///
+
+To solve this lab, log in as dministrator. On the admin panel promote carlos and send the request to repeater. Now log out, and log in as wiener. Copy wiener's session cookie, and copy it into the repeated request.
+After you send it it will response the request is Unauthorized. All you have to do is change the request methog to GET, and change the username to wiener, and send the request.
+
+
+
