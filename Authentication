@@ -1,0 +1,134 @@
+Task 1:
+///Lab: Username enumeration via different responses///
+
+Open the site in burp and try to log in with anything...like with the username: xyz and password : zyx.
+In http history you will see a post request:
+POST /login HTTP/2
+Host: 0a74002304f50ab3810ddfd8000e000d.web-security-academy.net
+Cookie: session=OgaVZFPKecxSabev6pOqkCOe3rVI9Zqc
+...
+
+username=asd&password=asd
+
+Send this request to intruder and also to repeater.
+On the intruder panel add a position to the username. In the labs desription there are a little database about usernames and passwords:
+"Candidate usernames
+Candidate passwords"
+
+Open the usernames, copy them out and paste them into the payload configuration, then go to settings/Grep - Match and add this: Incorrect password. When we tried to log in we got an error:"invalid username".
+So if the username is right, but the password is not correct we will get another error message back, which will be probably incorrect password...and start the attack.
+To me the username 'an' was a correct username, but the password was incorrect (i checked in repeater)...now change our payload...delete the username position and copy what username your burp found, add a position to the password value
+copy out all the passwords from the database, delete the grep - match and run the attack. If you check the 'Length' column you will see that most of the passwords are more than 6000, there will be only one
+which is only like 180. That is our password. It was 'michael' to me. Log in with the username and password (an/michael to me), and the lab is solved.
+
+Task 2:
+///Lab: 2FA simple bypass///
+
+Log in as wiener, to verify, open the email server. After you entered the validation code you moved to the profile's account page. So since its a simple bypass, what is we can simply skip the validation part?
+So log out and log in with carlos/montoya. When the validation site comes up, just modify the url to the accounts page /my-account?id=carlos and that all
+
+Task 3:
+///Lab: Password reset broken logic///
+
+Open the site in burp. Log in as wiener and open the email server. Log out, and click on 'Forgot Password?' copy the email servers email into here and send it. We got an email from the site where is a password reset link.
+On this page write in a new password anything you want...and in burp turn in intercept...Submit the new password request and in burp you will get a POST request:
+POST /forgot-password?temp-forgot-password-token=mkoran0zroh7o6cp0f5ws4m2fwqdmf4c HTTP/2
+Host: 0aa800720439140481679dec00ad000f.web-security-academy.net
+Cookie: session=uLiJPLOHGkOH63Q7pCY5XUkXgTtiEc6o
+...
+
+temp-forgot-password-token=mkoran0zroh7o6cp0f5ws4m2fwqdmf4c&username=wiener&new-password-1=asdfg&new-password-2=asdfg
+
+Change the username to carlos, and forward it...the you can turn off the intercept. Now log in as carlos with the new password, and thats all.
+
+Task 4:
+///Lab: Username enumeration via subtly different responses///
+
+Open the site in burp, and try to login with something. Send the request to intruder. Now you have 2 options. Using Cluster bomb attack which is really long you will have 10 100 tries to wait for, or add a position to
+the value of the username. Copy the username database and paste it into the payload list. Then on the settings tab, you will find an option called Grep - Extract. Click on add, and from the source select the 
+'Invalid username or password.' part, and click on ok. Run the sniper attack. One on the requests only contains 'Invalid username or password' without the . at the end. That will be your valid username. in my case it was
+'agent'. Now copy this value into the intruders payload, and add a position to the password. Clear the username database from the payload, and copy the password database into it. Run the attack and you will get the 
+password (status code will be 302 not 200). Now all you have to do is log in with the valid credentials.
+
+Task 5:
+///Lab: Username enumeration via response timing///
+
+Open the site in burp. Do a fake login, and send the request to repeater. If you send too much tries to log in, the server will tilt you down for 30 mins. After it titled me down i was searching how i can bypass this..
+And i found a header: X-Forwarded-For. Which looks like this in the request: X-Forwarded-For: 123.123.123.123. If i send this to the server, it will think that this is my ip, so quasi i changed my ip, and now i can try
+again without the tilt.
+So in intruder:
+POST /login HTTP/2
+Host: 0acc0097046a4709c281792500780067.web-security-academy.net
+Cookie: session=N20lteur1P584dvoGQDAFPciJdKGPx2z
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 25
+Origin: https://0acc0097046a4709c281792500780067.web-security-academy.net
+Referer: https://0acc0097046a4709c281792500780067.web-security-academy.net/login
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+Priority: u=0, i
+Te: trailers
+X-Forwarded-For:
+
+username=asd&password=asd
+
+Add a payload postition after the X-Forwarded-For: header, and to the value of the username. Switch the attack tipe to Pitchfork attack since we have 2 positions. We have to change our "ip" in every request else
+we will trigger the tilting, so in the payload sidepanel Payload position: pick 1, and at type pick numbers. from 1 to 100 because we will have 100 tries. Now select the second payload position, and add the 
+username database to the configuration. But we have to set one more thing. If we find a valid username we wont see in the attack..why? bacause if our password is short it wont be long time to validate the password
+But if the password is long, it will cause a time delay to check if its valid or not. S modify the request like:
+username=asd&password=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Now start the attack, and check the response received value. If its more than like 3000 thats our valid username.
+after you got the valid username, modify the intruder request. Copy the valid username to the username value, and add a payload position to the password value, then copy the password database into
+the 2nd payload position. and run the attack. Now you have to check the status code. if its 302, you have the password. Log in and thats all.
+For me the username was ads, and the pw was 123321.
+
+Task 6:
+///Lab: Broken brute-force protection, IP block///
+
+Open the lab in burp, and try to login with anyting. After 3 tries the server tilts down, but if you log in, it will reset and you have 3 tries again. So my idea was a pitchfork attack, where we have to payload postitions.
+So send this POST request to intruder, and add 2 payload postitions, one is for the username and one is for the password. 
+So to avoid the 3 attempt ban...i added this config to my first payload:
+
+wiener
+carlos
+carlos
+wiener
+carlos
+carlos
+wiener....etcetc a LOT
+Then i coopied out the password database to a txt file, and edited it like this:
+peter
+123456
+password
+peter
+12345678
+qwerty
+peter
+123456789
+12345
+peter
+1234
+111111
+peter
+1234567
+
+So every third attempt the server log in with the valid credentials, but then tries probably not valid passwords. So two invalid followed with one valid. But before we start our attack, we have one option that we
+have to set...click on resource pool and set the 'Maximum concurrent requests' to 1 (default is 10...).
+And run the attack. Check the status value...there will be a lot of wiener 302, but only one carlos 302 with the valid password....
+
+Task 7:
+///Lab: Username enumeration via account lock///
+
+Open the site in burp, make a fake login and send the request to intruder. Select Cluster bomb attack, add 2 payload positions. The first is the username value, the second is after (!!) the password value, an empty 
+payload position. Add the username database to the first payload, and at the 2nd payload position select 'Null payloads'. Under this in the payload configuration set the Generate payloads to 5. Run the attack.
+There will be one with a different length. That is your valid username. Change the intruders payload to sniper attack, change the username value to the valid, put a payload position to the password value, copy 
+the password database into the payload configuration, and run the attack, then Log in.
+
+
