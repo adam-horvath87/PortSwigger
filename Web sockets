@@ -1,0 +1,22 @@
+Task 1:
+///Lab: Manipulating WebSocket messages to exploit vulnerabilities///
+
+Open the site in burp, and click on live chat. Turn on intercept and send a message. in the intercept you will see a request like this:
+{"message":"asd"}
+Modify it with <img src=1 onerror=alert()>:
+{"message":"<img src=1 onerror=alert()>"}
+
+Task 2:
+///Lab: Manipulating the WebSocket handshake to exploit vulnerabilities///
+
+Do the same like before. But after we modify the message, the chat will disconnect:
+
+CONNECTED:	-- Now chatting with Hal Pline --
+Error:	Attack detected: Event handler
+System:	--- Disconnected ---
+
+We can use live chat again, our ip is blacklisted now...to play it out (remember...we used X-Forwarded-For header to skip ip restrictions): First go to proxy/websockets history and search out the message request:
+{"message":"asd"} Send this request to repeater. There is a little button next to send with the text "Reconnect". Click on it, and a window will pop up with the chat request. Insert the header at the end like:
+'X-Forwarded-For: 1.2.3.4' then click on connect.
+Now that we played out ip filtering we have to send a message which is not like the usual. so modify the request like this:
+{"message":"<img src=1 OnErRoR=alert'1'>"} send it and solved.
