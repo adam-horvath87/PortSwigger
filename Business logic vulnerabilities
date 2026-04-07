@@ -1,0 +1,103 @@
+Task 1:
+///Lab: Excessive trust in client-side controls///
+
+Open the site in burp, log in, check the leather jacket, and add one to your cart, then remove it, and send the adding request to repeater. Notice that if you change the price value you will still get 302 found.
+This means we can intercept the request, and change the value.
+So go to the product's tab, and turn on intercept. In the POST request change the value like this:
+POST /cart HTTP/2
+Host: 0a28002504de850681b039800089006f.web-security-academy.net
+Cookie: session=rqTvjO8ycY82wapYD1lwEYA0x2HAhVuD
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 49
+Origin: https://0a28002504de850681b039800089006f.web-security-academy.net
+Referer: https://0a28002504de850681b039800089006f.web-security-academy.net/product?productId=1
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+Priority: u=0, i
+Te: trailers
+
+productId=1&redir=PRODUCT&quantity=1&price=1
+And forward it. then turn off the intercept, and as you can see you added the leather jacked for 0.01 dollar to you cart. Place the order, and you solved the lab.
+
+Task 2:
+///Lab: High-level logic vulnerability///
+
+Open the site in burp, log in, and put the jacket into the cart. Send the request to burp and start to change the values. I've tried to add the price value, did not work. But if you change the quantity to -1
+The price will be -1337 dollars. This means we can add minus items to our order!
+So add a leather jacket normally to the cart, and change another item...i picket Weird Crushes Game for $97.67. Turn on intercept, and change the quantity to -13 which will be -1269 dollars. Turn off
+the intercept. The overall value of my order will be 67.29 dollars. PLace the order and we solved the lab.
+
+Task 3:
+///Lab: Inconsistent security controls///
+
+Open the site in burp. To delete carlos, there must be and admin panel. So change the url's end to /admin. As you can see we have to be DontWannaCry users...so register with this name and with the exploiting email address.
+Follow the link in the confirmation email, then log in as DontWannaCry. If you go to the /admin panel again, it still writes we have to be DontWannaCry users. So change the email to asd@dontwannacry.com, and 
+if you try again, you have and access to the admin panel. Delete carlos, and thats all.
+
+Task 4:
+///Lab: Flawed enforcement of business rules///
+
+Open the site in burp, log in, and add the leather jacket to your cart. Add the new customer NEWCUST5 coupon to the order. On the front page you can get another coupon code with signing up to the newsletter,
+so sign up and you get another coupon code: SIGNUP30. Add this too to your order. Notice that if you tried to use the same coupon again, it writes that its already used, but if you change the 2 coupon codes after
+eachother 1 by 1 then you can play out the restriction...so change the coupons until you get down to 0 dollars, and place the order.
+
+Task 5:
+///Lab: Low-level logic flaw///
+
+Open the site in burp and log in. Add the jacket to your cart and send the POST /cart request to intruder. Set the quantity to 99, set the payload type to Null payloads and in the payload configuration change to
+Continue indefinitely and start to attack...after the intruder added like 16000 items to our cart you will see that the value looped back to - values bacause there is a maximum value of the price, and we exceeded it. 
+Clear you cart. All we have to do is to set the price order between 0 and 100...To do this change the payload configuration to generate 323 payloads. 
+Then go to the Resource pool panel and change the Maximum current requests to 1 and run the attack again. After it finished add 47 more leather jackets and 14 Conversation Controlling Lemon 	$88.10. 
+My orders value is 11.44 dollars now. Place the order and solve the lab.
+
+Task 6:
+///Lab: Inconsistent handling of exceptional input///
+
+Open the site in burp, register a user with the exploit email and log in. As you can see we cant see the email parameter here. Log out.
+The lab says that "This lab doesn't adequately validate user input. You can exploit a logic flaw in its account registration process to gain access to administrative functionality"
+So we have an /admin page, and if you check it, it writes that we have to be a DontWannaCry user to get admin rights. We have an email exploit server and the lab says that 
+"The client will display all messages sent to @YOUR-EMAIL-ID.web-security-academy.net" so we can put everything in front of our exploiting email server we will get the email.
+This indicates us that if we overflow the email parameters maybe we can force the server to write out our email but only with @dontwannacry.com ending, because if we owerflow, the rest of the email will disappear.
+so our email ending will be @dontwannacry.com.exploit-0a7300ef038008a5819dfc5201bf00f8.exploit-server.net. All we have to do is to figure out how much string do we need to see the xyz@dontwannacry.com. So put a lot of string
+in front of this and try to figure out the solution...
+After a lot of tries the answer is:
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA@dontwannacry.com.exploit-0a7300ef038008a5819dfc5201bf00f8.exploit-server.net
+Register with this email, login, and on the admin panel delete carlos.
+
+Task 7:
+///Lab: Weak isolation on dual-use endpoint///
+
+Open the site in burp, log in as wiener/peter and change the password. Send the POST /my-account/change-password to repeater:
+POST /my-account/change-password HTTP/2
+Host: 0acc008e03ce78b180886c7800110076.web-security-academy.net
+Cookie: session=cFea8cmjRb1LBGzvnuaIRgOY8Rz1jrcI
+...
+...
+Te: trailers
+
+csrf=F33DdtH9LAfpLFdk3CGnvxVbU1JAp7Ob&username=wiener&current-password=peter&new-password-1=asd&new-password-2=asd
+
+So there is a token, a username a current passord and 2 new password. Notice if you delete current-password you will still get 200 ok. Now change the username to administrator and the password to anything you want.
+Send it and you will get a 200 ok. Log in as administrator and delete carlos.
+
+Task 8:
+///Lab: Insufficient workflow validation///
+
+Open the site in burp and log in. Try to buy the jacket. If you do you will get a GET /cart?err=INSUFFICIENT_FUNDS request. Nos lets see what if we actually buy something. Then you will get a 
+GET /cart/order-confirmation?order-confirmed=true request. If you check the headers, its all the same. So add the leader jacket to your cart, go to your cart and turn on intercept. Click on the place order.
+Forward the POST request, and then you will get the GET /cart?err=INSUFFICIENT_FUNDS request. modify this to GET /cart/order-confirmation?order-confirmed=true and let forward it, and thats all...the lab is solved.
+
+Task 9:
+///Lab: Authentication bypass via flawed state machine///
+
+Open the site in burp, and log in as wiener/peter. As you can see there is a role selector. I've tried bypass this from repeater with rerouting to our account page, didnt work, so my next try was what if i intercept 
+the logging in, and just drop the redirection. So i turned intercept on, log in with wiener/peter, forwarded the POST request and then droopped the GET /role-selector request. I got an error, so i moved back to the front
+page, and there was an admin panel where i delete carlos
+
