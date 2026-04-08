@@ -1,0 +1,28 @@
+Task 1:
+///Lab: JWT authentication bypass via unverified signature///
+
+Open the site in burp and log in. Change the url to /admin and you will get this error: 
+"Admin interface only available if logged in as an administrator"
+Send the GET / request to repeater. Go to the JSON web token tab and in the payload section change the sub: wiener to like this:
+{
+    "iss": "portswigger",
+    "exp": 1775665598,
+    "sub": "administrator"
+}
+And send the request. As you can see you have acces to the admin panel now, where you can see the deleting url to carlos:/admin/delete?username=carlos 
+So copy this in the request like GET /admin/delete?username=carlos HTTP/2 and send the request.
+
+Task 2:
+///Lab: JWT authentication bypass via flawed signature verification///
+
+Do exactly the same like in task 1, but 1 difference. When you check the JSON Web token tab there is a header section:
+{
+    "kid": "dd99eab6-1702-415b-a4de-48c3599e2f98",
+    "alg": "RS256"
+}
+At the bottom there is a button called 'Attack' click on it and pick "none" signing algorithm and pick none as the algorithm value.
+Change wiener to administrator and the request to GET /admin and send it. From the source copy out the deleting route to carlos and modify the request:
+GET /admin/delete?username=carlos HTTP/2 and send it again.
+
+Task 3:
+///
