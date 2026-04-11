@@ -1,0 +1,30 @@
+Task 1:
+///
+
+Task 2:
+///
+
+
+Task 3:
+///Lab: Exploiting NoSQL injection to extract data///
+
+Open the site in burp, login as wiener/peter, check the requests. You will find a GET /user/lookup?user=wiener request in http history. Send this request to repeater.
+Lets try to get an error message. Put a ' behind the username value:
+{
+  "message": "There was an error getting user details"
+}
+If we chane the url end to '+' we will get back our login credentials. Lets give the server to a false condition:' && '1'=='2
+As response we will get: Could not find user. If you change the condition to a true one: '1'=='1 you will get back your credentials.
+Notice, that if you change the username value to administrator, you will get back the administrators credentials. Now we have to find out the administrators password.
+As first, lets find out the passwords length. Change the request url's end to: ' && this.password.length < 10 || 'a'=='b
+This means, if the password is shorter then 10 chars, then its true, and give back the administrators credentials. if longer than 10, it will show us an error.
+I found out that at 8 i got an error, and at 9 i still have the credentials, this means the password is 8 characters long.
+To identify the passowrd we will use this payload:
+' && this.password[0]=='a
+This means that the first character from the password is 'a' if we get back the credentials, then its true (we have a match), if its false we will get an error.
+Send the request to intruder. In the lab's tip: "The password only uses lowercase letters."
+to run an attack, pick Sniper attack, and put a position to the 'a'. In the payload configuration put all the lowercase letters, and run the attack
+My first letter is 'l'. Now change the 0 to 1, and keep up this until 7.
+My password is: lltxewoi
+Login as administrator, and the lab is solved.
+
